@@ -1,0 +1,31 @@
+{
+  "name": "cron-ng",
+  "version": "0.9.0",
+  "homepage": "https://github.com/payrollhero/cron.ng",
+  "authors": [
+    "bramski <bwhillock@payrollhero.com>"
+  ],
+  "description": "An angularjs service provider for stateful and prioritized app wide scheduling",
+  "main": "cron.ng.js",
+  "keywords": [
+    "angularjs",
+    "cron",
+    "scheduler"
+  ],
+  "license": "BSD",
+  "dependencies": {
+    "angular": "~1.3.7",
+    "underscore": "~1.7.0",
+    "angular-moment": "~0.8.3",
+    "angular-local-storage": "~0.1.5"
+  },
+  "devDependencies": {
+    "angular-mocks": "~1.2.23",
+    "angular-scenario": "~1.2.23",
+    "karma-jasmine": "~0.2.2",
+    "jasmine-sinon": "~0.4.0"
+  },
+  "resolutions": {
+    "angular": "~1.3.7"
+  }
+}
