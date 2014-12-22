@@ -57,5 +57,5 @@ describe "CronJobRunner", ->
         $timeout.flush()
         $timeout.flush()
         expect(catchSpy).toHaveBeenCalledWith(
-          "Timed out Foobar after 20 seconds"
+          "TimedOut"
         )

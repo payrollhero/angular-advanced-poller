@@ -6,9 +6,10 @@ angular.module('cron-ng')
     class CronJobRunner
       constructor: (job) ->
         @job = job
+        @running = true
 
       run: ->
-        console.log("Running job #{@job.name}")
+        console.debug("Running job #{@job.name}")
         @promise = $q.defer()
         promise = @_run()
         @_scheduleTimeout()
@@ -18,12 +19,14 @@ angular.module('cron-ng')
           @promise.reject(args...)
         .finally =>
           @_cancelTimeout()
-        @promise.promise
+          return
+        @promise.promise.finally =>
+          @running = false
 
-      cancel: ->
-        console.log("Cancelling job #{@job.name}")
+      stop: ->
+        console.debug("Stopping job #{@job.name}")
         @_cancelTimeout()
-        @promise.resolve('Job Cancelled')
+        @promise.resolve('Stopped')
 
       _run: ->
         result = @job.run()
@@ -33,7 +36,8 @@ angular.module('cron-ng')
           return $q.when(result)
 
       _timeout: ->
-        @promise.reject("Timed out #{@job.name} after #{@job.getTimeout().seconds()} seconds")
+        console.debug("Timed out job #{@job.name}")
+        @promise.reject('TimedOut')
 
       _scheduleTimeout: ->
         #Wrap setting the timeout in a zero time callback to prevent this being fired prematurely

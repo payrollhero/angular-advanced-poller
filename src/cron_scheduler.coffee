@@ -1,6 +1,6 @@
 'use strict'
 
-angular.module('cron-ng').service 'CronScheduler', (CronJob, $timeout) ->
+angular.module('cron-ng').service 'CronScheduler', (CronJob, $timeout, $rootScope) ->
   jobs = []
   executingJobs = []
   executionPromise = null
@@ -12,24 +12,48 @@ angular.module('cron-ng').service 'CronScheduler', (CronJob, $timeout) ->
     job.initialize()
     job
 
+  finishJobAndRunNextJobOnQueue = (job) ->
+    ->
+      announceJobFinished(job)
+      executingJobs = _(executingJobs).without(job)
+      executeNextJobsOnQueue()
+
+  announceJobFinished = (job) ->
+    $rootScope.$broadcast("cron.ng.job.#{job.name}.finish")
+
+  announceJobStarted = (job) ->
+    $rootScope.$broadcast("cron.ng.job.#{job.name}.start")
+
+  announceJobCompletion = (job) ->
+    (args...) ->
+      console.debug("Job #{job.name} finished successfully.")
+      $rootScope.$broadcast("cron.ng.job.#{job.name}.success", args...)
+
+  announceJobFailure = (job) ->
+    (args...) ->
+      console.debug("Job #{job.name} failed.")
+      $rootScope.$broadcast("cron.ng.job.#{job.name}.failure", args...)
+
   executeNextJobsOnQueue = ->
+    return unless executionPromise #shortcut out if we're stopped
     readyJobs = _(jobs).filter( (job) -> job.isOverdue())
-    console.log("#{readyJobs.length} jobs are ready")
+    console.debug("#{readyJobs.length} jobs are ready")
     while executingJobs.length < maximumConcurrency && readyJobs.length > 0
       nextJob = readyJobs.shift()
       executingJobs.push nextJob
-      nextJob.execute().finally ->
-        executingJobs = _(executingJobs).without(nextJob)
-        executeNextJobsOnQueue()
+      announceJobStarted(nextJob)
+      nextJob.execute()
+      .then(announceJobCompletion(nextJob), announceJobFailure(nextJob))
+      .finally(finishJobAndRunNextJobOnQueue(nextJob))
+    return
 
   organizeJobs = ->
     jobs = _(jobs).sortBy('priority')
 
   executeJobs = ->
-    try
-      executeNextJobsOnQueue()
-    finally
-      executionPromise = $timeout executeJobs, 100
+    console.debug("Execute Jobs called")
+    executionPromise = $timeout executeJobs, 100
+    executeNextJobsOnQueue()
 
   stopAllJobs = ->
     _(executingJobs).invoke('cancel')
@@ -43,13 +67,15 @@ angular.module('cron-ng').service 'CronScheduler', (CronJob, $timeout) ->
 
   @start = ->
     organizeJobs()
-    console.log("Cron-ng started")
+    console.debug("Cron-ng started")
     executeJobs()
 
   @stop = ->
-    console.log("Cron-ng stopped.")
+    console.debug("Cron-ng stopping.")
     stopAllJobs()
     $timeout.cancel(executionPromise) if executionPromise
     executionPromise = null
+    $rootScope.$digest() #Force a digest to clear the timeouts before returning.
+    console.debug("Cron-ng stopped.")
 
   return

@@ -38,11 +38,17 @@ angular.module('cron-ng').factory 'CronJob', (localStorageService, CronJobRunner
       this
 
     cancel: ->
-      @runner.cancel()
-      if @stop?
-        @stop()
+      @runner.stop() if @runner?
+      @runner = null
+      @stop() if @stop?
 
     execute: ->
+      @_endPreviousRunner()
       @saveNextRun()
       @runner = new CronJobRunner(this)
       @runner.run()
+
+    _endPreviousRunner: ->
+      if @runner && @runner.running
+        console.debug("Runner for job #{job.name} is still running.")
+        @runner.stop()
