@@ -357,7 +357,9 @@ angular.module('cron.ng').service('CronScheduler', function(CronJob, $timeout, $
       $timeout.cancel(executionPromise);
     }
     executionPromise = null;
-    $rootScope.$digest();
+    if (!$rootScope.$$phase) {
+      $rootScope.$digest();
+    }
     return console.debug("Cron-ng stopped.");
   };
 });

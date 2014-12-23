@@ -118,7 +118,8 @@ angular.module('cron.ng').service 'CronScheduler', (CronJob, $timeout, $rootScop
     stopAllJobs()
     $timeout.cancel(executionPromise) if executionPromise
     executionPromise = null
-    $rootScope.$digest() #Force a digest to clear the timeouts before returning.
+    unless $rootScope.$$phase
+      $rootScope.$digest() #Force a digest to clear the timeouts before returning.
     console.debug("Cron-ng stopped.")
 
   return
