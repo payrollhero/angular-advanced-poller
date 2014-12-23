@@ -6,7 +6,7 @@
     "bramski <bwhillock@payrollhero.com>"
   ],
   "description": "An angularjs service provider for stateful and prioritized app wide scheduling",
-  "main": "cron.ng.js",
+  "main": "dist/cron.ng.js",
   "keywords": [
     "angularjs",
     "cron",
