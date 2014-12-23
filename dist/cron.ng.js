@@ -249,7 +249,7 @@ angular.module('cron.ng').service('CronScheduler', function(CronJob, $timeout, $
     readyJobs = _(jobs).filter(function(job) {
       return job.isOverdue();
     });
-    console.debug("" + readyJobs.length + " jobs are ready");
+    console.debug("" + readyJobs.length + " jobs are ready at " + (moment().toISOString()));
     while (executingJobs.length < maximumConcurrency && readyJobs.length > 0) {
       nextJob = readyJobs.shift();
       executingJobs.push(nextJob);
@@ -261,7 +261,6 @@ angular.module('cron.ng').service('CronScheduler', function(CronJob, $timeout, $
     return jobs = _(jobs).sortBy('priority');
   };
   executeJobs = function() {
-    console.debug("Execute Jobs called");
     executionPromise = $timeout(executeJobs, 100);
     return executeNextJobsOnQueue();
   };

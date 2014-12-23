@@ -43,7 +43,7 @@ angular.module('cron.ng').service 'CronScheduler', (CronJob, $timeout, $rootScop
   executeNextJobsOnQueue = ->
     return unless executionPromise #shortcut out if we're stopped
     readyJobs = _(jobs).filter( (job) -> job.isOverdue())
-    console.debug("#{readyJobs.length} jobs are ready")
+    console.debug("#{readyJobs.length} jobs are ready at #{moment().toISOString()}")
     while executingJobs.length < maximumConcurrency && readyJobs.length > 0
       nextJob = readyJobs.shift()
       executingJobs.push nextJob
@@ -57,7 +57,6 @@ angular.module('cron.ng').service 'CronScheduler', (CronJob, $timeout, $rootScop
     jobs = _(jobs).sortBy('priority')
 
   executeJobs = ->
-    console.debug("Execute Jobs called")
     executionPromise = $timeout executeJobs, 100
     executeNextJobsOnQueue()
 
