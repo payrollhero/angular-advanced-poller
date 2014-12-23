@@ -136,11 +136,11 @@ describe "CronScheduler", ->
         subject.stop()
         $timeout.flush()
 
-  describe "#whenCompleted", ->
+  describe "#onNextRunOf", ->
     it "resolves the promise when the job runs", ->
       startJobs()
       successSpy = sandbox.spy()
-      subject.whenCompleted('Job1').then(successSpy)
+      subject.onNextRunOf('Job1').then(successSpy)
       job1.promise.resolve(["Item1","Item2"])
       $rootScope.$digest()
       expect( successSpy ).toHaveBeenCalledWith(["Item1","Item2"])

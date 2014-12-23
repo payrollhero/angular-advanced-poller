@@ -1,5 +1,19 @@
 'use strict'
 
+###*
+  @ngdoc service
+  @name cron.ng.CronScheduler
+  @service CronScheduler
+  @description
+    The CronScheduler is a promise based scheduleer.
+    It allows you to schedule jobs for regular periodic runs based upon a schedule.  It has a few main features.
+    * Has a configurable concurrency so that only so many jobs may run at the same time.  Jobs are scheduled based upon
+      priority.
+    * Saves state of the jobs using local storage so that window opens & closes won't cause your jobs to re-execute when the user
+      opens your app.
+    * Pre-empting.  You may tell the scheduler to run a job immediately by name.
+    * Simple configuration of jobs.
+###
 angular.module('cron.ng').service 'CronScheduler', (CronJob, $timeout, $rootScope, $q) ->
   jobs = []
   executingJobs = []
@@ -25,21 +39,25 @@ angular.module('cron.ng').service 'CronScheduler', (CronJob, $timeout, $rootScop
   announceJobStarted = (job) ->
     $rootScope.$broadcast("cron.ng.job.#{job.name}.start")
 
+  announceJobCompletion = (job) ->
+    (args...) ->
+      $rootScope.$broadcast("cron.ng.job.#{job.name}.success", args...)
+
+  announceJobFailure = (job) ->
+    (args...) ->
+      $rootScope.$broadcast("cron.ng.job.#{job.name}.failure", args...)
+
   onJobSuccess = (scope, job, callback) ->
     scope.$on("cron.ng.job.#{job.name}.success", callback)
 
   onJobFailure = (scope, job, callback) ->
     scope.$on("cron.ng.job.#{job.name}.failure", callback)
 
-  announceJobCompletion = (job) ->
-    (args...) ->
-      console.debug("Job #{job.name} finished successfully.")
-      $rootScope.$broadcast("cron.ng.job.#{job.name}.success", args...)
+  onJobStarted = (scope, job, callback) ->
+    scope.$on("cron.ng.job.#{job.name}.start", callback)
 
-  announceJobFailure = (job) ->
-    (args...) ->
-      console.debug("Job #{job.name} failed.")
-      $rootScope.$broadcast("cron.ng.job.#{job.name}.failure", args...)
+  onJobFinished = (scope, job, callback) ->
+    scope.$on("cron.ng.job.#{job.name}.finish", callback)
 
   closestJobTime = ->
     now = moment()
@@ -82,6 +100,22 @@ angular.module('cron.ng').service 'CronScheduler', (CronJob, $timeout, $rootScop
       throw "Job #{name} is not a known job"
     job
 
+  ###
+    @ngdoc method
+    @name CronScheduler.addJob
+    @function
+
+    @description Add a job to this scheduler.  Must be done before calling 'start'
+    @example
+      CronScheduler.addJob({
+        name: "Job1",
+        priority: 2,
+        run: ( -> true),
+        interval: moment.duration(seconds: 30),
+        timeout: moment.duration(seconds: 20)
+        randomOffset: moment.duration(seconds: 5)
+      })
+  ###
   @addJob = (jobDefinition) ->
     if executionPromise
       throw "The cron scheduler is running.  Stop it before adding jobs."
@@ -90,7 +124,15 @@ angular.module('cron.ng').service 'CronScheduler', (CronJob, $timeout, $rootScop
     jobs.push cronJob
     return
 
-  @whenCompleted = (name) ->
+  ###
+    @ngdoc method
+    @name CronScheduler.onNextRunOf
+    @function
+
+    @description Returns a promise which is fulfilled when the next run of
+      the named job completes.
+  ###
+  @onNextRunOf = (name) ->
     job = findJob(name)
 
     $scope = $rootScope.$new true
@@ -103,18 +145,86 @@ angular.module('cron.ng').service 'CronScheduler', (CronJob, $timeout, $rootScop
       $scope.$destroy()
     nextUpdate.promise
 
+  ###
+    @ngdoc method
+    @name CronScheduler.whenStarted
+    @function
+
+    @description Calls the callback each time the job starts.
+  ###
+  @whenStarted = (job, $scope, callback) ->
+    job = findJob(name)
+    onJobStarted $scope, job, callback
+
+  ###
+    @ngdoc method
+    @name CronScheduler.whenSucceeded
+    @function
+
+    @description Calls the callback each time the job is successful.
+  ###
+  @whenSucceeded = (job, $scope, callback) ->
+    job = findJob(name)
+    onJobSuccess $scope, job, callback
+
+  ###
+    @ngdoc method
+    @name CronScheduler.whenFailed
+    @function
+
+    @description Calls the callback each time the job fails.
+  ###
+  @whenFailed = (job, $scope, callback) ->
+    job = findJob(name)
+    onJobFailure $scope, job, callback
+
+  ###
+    @ngdoc method
+    @name CronScheduler.whenFinished
+    @function
+
+    @description Calls the callback each time the job finishes.
+  ###
+  @whenFinished = (job, $scope, callback) ->
+    job = findJob(name)
+    onJobFinished $scope, job, callback
+
+  ###
+    @ngdoc method
+    @name CronScheduler.runNow
+    @function
+
+    @description Schedule the named job to run immediately.  Running of the job is still
+      based upon priority.  If higher priority jobs still need to be run, the running
+      of this job may be delayed.
+  ###
   @runNow = (name) ->
     job = findJob(name)
     job.makeOverdue()
     executeNextJobsOnQueue()
     return
 
+  ###
+    @ngdoc method
+    @name CronScheduler.start
+    @function
+
+    @description Start the cron scheduler.  Waiting jobs will run immediately.
+  ###
   @start = ->
+    console.debug("Cron.Ng starting")
     organizeJobs()
-    console.debug("Cron.Ng started")
     executeJobs()
+    console.debug("Cron.Ng started")
     return
 
+  ###
+    @ngdoc method
+    @name CronScheduler.stop
+    @function
+
+    @description Stop the cron scheduler.  Jobs which can be stopped will be stopped immediately.
+  ###
   @stop = ->
     console.debug("Cron.Ng stopping.")
     stopAllJobs()
@@ -125,6 +235,13 @@ angular.module('cron.ng').service 'CronScheduler', (CronJob, $timeout, $rootScop
     console.debug("Cron.Ng stopped.")
     return
 
+  ###
+    @ngdoc method
+    @name setConcurrency
+    @function
+
+    @description Set the maximum concurrency of the scheduler.  max [n] jobs will be run at the same time.
+  ###
   @setConcurrency = (concurrency) ->
     maximumConcurrency = concurrency
     return
