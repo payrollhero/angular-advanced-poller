@@ -249,7 +249,9 @@ angular.module('cron.ng').service('CronScheduler', function(CronJob, $timeout, $
     readyJobs = _(jobs).filter(function(job) {
       return job.isOverdue();
     });
-    console.debug("" + readyJobs.length + " jobs are ready at " + (moment().toISOString()));
+    if (readyJobs.length > 0) {
+      console.debug("" + readyJobs.length + " jobs are ready at " + (moment().toISOString()));
+    }
     while (executingJobs.length < maximumConcurrency && readyJobs.length > 0) {
       nextJob = readyJobs.shift();
       executingJobs.push(nextJob);
