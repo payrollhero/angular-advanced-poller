@@ -193,8 +193,8 @@ angular.module('cron.ng').factory('CronJobRunner', function($q, $timeout) {
 'use strict';
 var __slice = [].slice;
 
-angular.module('cron.ng').service('CronScheduler', function(CronJob, $timeout, $rootScope) {
-  var announceJobCompletion, announceJobFailure, announceJobFinished, announceJobStarted, executeJobs, executeNextJobsOnQueue, executingJobs, executionPromise, finishJobAndRunNextJobOnQueue, jobFromDefinition, jobs, maximumConcurrency, organizeJobs, stopAllJobs;
+angular.module('cron.ng').service('CronScheduler', function(CronJob, $timeout, $rootScope, $q) {
+  var announceJobCompletion, announceJobFailure, announceJobFinished, announceJobStarted, executeJobs, executeNextJobsOnQueue, executingJobs, executionPromise, finishJobAndRunNextJobOnQueue, jobFromDefinition, jobs, maximumConcurrency, onJobFailure, onJobSuccess, organizeJobs, stopAllJobs;
   jobs = [];
   executingJobs = [];
   executionPromise = null;
@@ -218,6 +218,12 @@ angular.module('cron.ng').service('CronScheduler', function(CronJob, $timeout, $
   };
   announceJobStarted = function(job) {
     return $rootScope.$broadcast("cron.ng.job." + job.name + ".start");
+  };
+  onJobSuccess = function(scope, job, callback) {
+    return scope.$on("cron.ng.job." + job.name + ".success", callback);
+  };
+  onJobFailure = function(scope, job, callback) {
+    return scope.$on("cron.ng.job." + job.name + ".failure", callback);
   };
   announceJobCompletion = function(job) {
     return function() {
@@ -270,6 +276,31 @@ angular.module('cron.ng').service('CronScheduler', function(CronJob, $timeout, $
     cronJob = jobFromDefinition(jobDefinition);
     cronJob.validate();
     return jobs.push(cronJob);
+  };
+  this.whenCompleted = function(name) {
+    var $scope, job, nextUpdate;
+    job = _(jobs).findWhere({
+      name: name
+    });
+    if (!job) {
+      throw "Job " + name + " is not a known job";
+    }
+    $scope = $rootScope.$new(true);
+    nextUpdate = $q.defer();
+    onJobSuccess($scope, job, function() {
+      var args, event;
+      event = arguments[0], args = 2 <= arguments.length ? __slice.call(arguments, 1) : [];
+      return nextUpdate.resolve.apply(nextUpdate, args);
+    });
+    onJobFailure($scope, job, function() {
+      var args, event;
+      event = arguments[0], args = 2 <= arguments.length ? __slice.call(arguments, 1) : [];
+      return nextUpdate.reject.apply(nextUpdate, args);
+    });
+    nextUpdate.promise["finally"](function() {
+      return $scope.$destroy();
+    });
+    return nextUpdate.promise;
   };
   this.start = function() {
     organizeJobs();

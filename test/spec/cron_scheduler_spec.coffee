@@ -56,9 +56,6 @@ describe "CronScheduler", ->
     jobs = [job1, job2]
     spyOnJob(job1)
     spyOnJob(job2)
-    spyOnJob(job3)
-    spyOnJob(job4)
-    spyOnJob(job5)
 
   afterEach ->
     subject.stop()
@@ -99,14 +96,13 @@ describe "CronScheduler", ->
         job1.promise.resolve("Done")
         job2.promise.resolve("Done")
         $rootScope.$digest()
-        sandbox.useFakeTimers(moment('2010-01-01 10:00:40').unix() * 1000)
+        sandbox.clock.now = (moment('2010-01-01 10:00:40').unix() * 1000)
         $timeout.flush()
         expect( job1.spy ).toHaveBeenCalledTwice()
         expect( job2.spy ).toHaveBeenCalledTwice()
         $rootScope.$digest()
         $timeout.flush()
 
-    describe "scope events", ->
       it "notifies about start, success, failure, finally", ->
         successSpy = sandbox.spy()
         failSpy = sandbox.spy()
@@ -140,19 +136,37 @@ describe "CronScheduler", ->
         subject.stop()
         $timeout.flush()
 
-    describe "there are 5 jobs", ->
-      before ->
-        jobs = [job1,job2,job3,job4,job5]
-        startJobs()
+  describe "#whenCompleted", ->
+    it "resolves the promise when the job runs", ->
+      startJobs()
+      successSpy = sandbox.spy()
+      subject.whenCompleted('Job1').then(successSpy)
+      job1.promise.resolve(["Item1","Item2"])
+      $rootScope.$digest()
+      expect( successSpy ).toHaveBeenCalledWith(["Item1","Item2"])
+      subject.stop()
+      $timeout.flush()
 
-      it "only starts 4 of them", ->
-        expect(job1.spy).toHaveBeenCalledOnce()
-        expect(job2.spy).toHaveBeenCalledOnce()
-        expect(job4.spy).toHaveBeenCalledOnce()
-        expect(job5.spy).toHaveBeenCalledOnce()
-        expect(job3.spy).not.toHaveBeenCalledOnce()
+  describe "there are 5 jobs", ->
+    before ->
+      spyOnJob(job3)
+      spyOnJob(job4)
+      spyOnJob(job5)
+      jobs = [job1,job2,job3,job4,job5]
+      startJobs()
 
-      it "starts the 5th one when one job finishes", ->
-        job1.promise.resolve("Done")
-        $rootScope.$digest()
-        expect(job3.spy).toHaveBeenCalledOnce()
+    it "only starts 4 of them", ->
+      expect(job1.spy).toHaveBeenCalledOnce()
+      expect(job2.spy).toHaveBeenCalledOnce()
+      expect(job4.spy).toHaveBeenCalledOnce()
+      expect(job5.spy).toHaveBeenCalledOnce()
+      expect(job3.spy).not.toHaveBeenCalledOnce()
+      subject.stop()
+      $timeout.flush()
+
+    it "starts the 5th one when one job finishes", ->
+      job1.promise.resolve("Done")
+      $rootScope.$digest()
+      expect(job3.spy).toHaveBeenCalledOnce()
+      subject.stop()
+      $timeout.flush()

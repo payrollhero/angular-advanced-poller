@@ -15,7 +15,6 @@ module.exports = function (config) {
       'src/*.coffee',
       'test/spec/**/test_support.coffee',
       'test/spec/**/*.coffee',
-      'test/spec/**/*.js'
     ],
     exclude: [],
     port: 8080,

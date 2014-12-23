@@ -1,6 +1,6 @@
 'use strict'
 
-angular.module('cron.ng').service 'CronScheduler', (CronJob, $timeout, $rootScope) ->
+angular.module('cron.ng').service 'CronScheduler', (CronJob, $timeout, $rootScope, $q) ->
   jobs = []
   executingJobs = []
   executionPromise = null
@@ -23,6 +23,12 @@ angular.module('cron.ng').service 'CronScheduler', (CronJob, $timeout, $rootScop
 
   announceJobStarted = (job) ->
     $rootScope.$broadcast("cron.ng.job.#{job.name}.start")
+
+  onJobSuccess = (scope, job, callback) ->
+    scope.$on("cron.ng.job.#{job.name}.success", callback)
+
+  onJobFailure = (scope, job, callback) ->
+    scope.$on("cron.ng.job.#{job.name}.failure", callback)
 
   announceJobCompletion = (job) ->
     (args...) ->
@@ -64,6 +70,21 @@ angular.module('cron.ng').service 'CronScheduler', (CronJob, $timeout, $rootScop
     cronJob = jobFromDefinition(jobDefinition)
     cronJob.validate()
     jobs.push cronJob
+
+  @whenCompleted = (name) ->
+    job = _(jobs).findWhere(name: name)
+    unless job
+      throw "Job #{name} is not a known job"
+
+    $scope = $rootScope.$new true
+    nextUpdate = $q.defer()
+    onJobSuccess $scope, job, (event, args...) ->
+      nextUpdate.resolve(args...)
+    onJobFailure $scope, job, (event, args...) ->
+      nextUpdate.reject(args...)
+    nextUpdate.promise.finally ->
+      $scope.$destroy()
+    nextUpdate.promise
 
   @start = ->
     organizeJobs()
