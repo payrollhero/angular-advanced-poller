@@ -58,6 +58,12 @@ angular.module('cron.ng').factory('CronJob', function(localStorageService, CronJ
       return moment().isAfter(this.nextRun) || moment().isSame(this.nextRun);
     };
 
+    CronJob.prototype.makeOverdue = function() {
+      this.nextRun = moment();
+      this._saveRuntime();
+      return this;
+    };
+
     CronJob.prototype.getTimeout = function() {
       return this.timeout || this._intervalOr30Seconds();
     };
@@ -74,8 +80,12 @@ angular.module('cron.ng').factory('CronJob', function(localStorageService, CronJ
 
     CronJob.prototype.saveNextRun = function() {
       this.nextRun = moment().add(this.getNextInterval());
-      localStorageService.set("cron.job.nextRun." + this.name, this.nextRun.toISOString());
+      this._saveRuntime();
       return this;
+    };
+
+    CronJob.prototype._saveRuntime = function() {
+      return localStorageService.set("cron.job.nextRun." + this.name, this.nextRun.toISOString());
     };
 
     CronJob.prototype.cancel = function() {
@@ -194,7 +204,7 @@ angular.module('cron.ng').factory('CronJobRunner', function($q, $timeout) {
 var __slice = [].slice;
 
 angular.module('cron.ng').service('CronScheduler', function(CronJob, $timeout, $rootScope, $q) {
-  var announceJobCompletion, announceJobFailure, announceJobFinished, announceJobStarted, executeJobs, executeNextJobsOnQueue, executingJobs, executionPromise, finishJobAndRunNextJobOnQueue, jobFromDefinition, jobs, maximumConcurrency, onJobFailure, onJobSuccess, organizeJobs, stopAllJobs;
+  var announceJobCompletion, announceJobFailure, announceJobFinished, announceJobStarted, executeJobs, executeNextJobsOnQueue, executingJobs, executionPromise, findJob, finishJobAndRunNextJobOnQueue, jobFromDefinition, jobs, maximumConcurrency, onJobFailure, onJobSuccess, organizeJobs, stopAllJobs;
   jobs = [];
   executingJobs = [];
   executionPromise = null;
@@ -269,6 +279,16 @@ angular.module('cron.ng').service('CronScheduler', function(CronJob, $timeout, $
   stopAllJobs = function() {
     return _(executingJobs).invoke('cancel');
   };
+  findJob = function(name) {
+    var job;
+    job = _(jobs).findWhere({
+      name: name
+    });
+    if (!job) {
+      throw "Job " + name + " is not a known job";
+    }
+    return job;
+  };
   this.addJob = function(jobDefinition) {
     var cronJob;
     if (executionPromise) {
@@ -280,12 +300,7 @@ angular.module('cron.ng').service('CronScheduler', function(CronJob, $timeout, $
   };
   this.whenCompleted = function(name) {
     var $scope, job, nextUpdate;
-    job = _(jobs).findWhere({
-      name: name
-    });
-    if (!job) {
-      throw "Job " + name + " is not a known job";
-    }
+    job = findJob(name);
     $scope = $rootScope.$new(true);
     nextUpdate = $q.defer();
     onJobSuccess($scope, job, function() {
@@ -302,6 +317,12 @@ angular.module('cron.ng').service('CronScheduler', function(CronJob, $timeout, $
       return $scope.$destroy();
     });
     return nextUpdate.promise;
+  };
+  this.runNow = function(name) {
+    var job;
+    job = findJob(name);
+    job.makeOverdue();
+    executeNextJobsOnQueue();
   };
   this.start = function() {
     organizeJobs();
