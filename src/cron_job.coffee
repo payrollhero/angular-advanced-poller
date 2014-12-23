@@ -1,6 +1,6 @@
 'use strict'
 
-angular.module('cron-ng').factory 'CronJob', (localStorageService, CronJobRunner) ->
+angular.module('cron.ng').factory 'CronJob', (localStorageService, CronJobRunner) ->
   class CronJob
 
     validate: ->

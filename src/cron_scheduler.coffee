@@ -1,6 +1,6 @@
 'use strict'
 
-angular.module('cron-ng').service 'CronScheduler', (CronJob, $timeout, $rootScope) ->
+angular.module('cron.ng').service 'CronScheduler', (CronJob, $timeout, $rootScope) ->
   jobs = []
   executingJobs = []
   executionPromise = null

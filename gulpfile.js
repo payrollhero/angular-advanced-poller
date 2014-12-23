@@ -36,14 +36,14 @@ gulp.task('coffee', function () {
 
 gulp.task('concat', function () {
   return gulp.src('.tmp/*.js')
-    .pipe(concat('cron-ng.js'))
+    .pipe(concat('cron.ng.js'))
     .pipe(gulp.dest('./dist/'))
 });
 
 gulp.task('compress', function(done) {
   return gulp.src('.tmp/*.js')
     .pipe(ngAnnotate())
-    .pipe(uglify('cron-ng.min.js'))
+    .pipe(uglify('cron.ng.min.js'))
     .pipe(gulp.dest('./dist/'))
 });
 

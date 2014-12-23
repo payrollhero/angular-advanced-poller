@@ -1,6 +1,6 @@
 'use strict'
 
-angular.module('cron-ng')
+angular.module('cron.ng')
   .factory 'CronJobRunner', ($q, $timeout) ->
 
     class CronJobRunner

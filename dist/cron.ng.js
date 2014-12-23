@@ -9,10 +9,10 @@ var dependencies;
 
 dependencies = ['LocalStorageModule'];
 
-angular.module('cron-ng', dependencies);
+angular.module('cron.ng', dependencies);
 
 'use strict';
-angular.module('cron-ng').factory('CronJob', function(localStorageService, CronJobRunner) {
+angular.module('cron.ng').factory('CronJob', function(localStorageService, CronJobRunner) {
   var CronJob;
   return CronJob = (function() {
     function CronJob() {}
@@ -110,7 +110,7 @@ angular.module('cron-ng').factory('CronJob', function(localStorageService, CronJ
 'use strict';
 var __slice = [].slice;
 
-angular.module('cron-ng').factory('CronJobRunner', function($q, $timeout) {
+angular.module('cron.ng').factory('CronJobRunner', function($q, $timeout) {
   var CronJobRunner;
   CronJobRunner = (function() {
     function CronJobRunner(job) {
@@ -193,7 +193,7 @@ angular.module('cron-ng').factory('CronJobRunner', function($q, $timeout) {
 'use strict';
 var __slice = [].slice;
 
-angular.module('cron-ng').service('CronScheduler', function(CronJob, $timeout, $rootScope) {
+angular.module('cron.ng').service('CronScheduler', function(CronJob, $timeout, $rootScope) {
   var announceJobCompletion, announceJobFailure, announceJobFinished, announceJobStarted, executeJobs, executeNextJobsOnQueue, executingJobs, executionPromise, finishJobAndRunNextJobOnQueue, jobFromDefinition, jobs, maximumConcurrency, organizeJobs, stopAllJobs;
   jobs = [];
   executingJobs = [];

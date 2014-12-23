@@ -10,4 +10,4 @@ dependencies = [
   'LocalStorageModule'
 ]
 
-angular.module('cron-ng', dependencies)
+angular.module('cron.ng', dependencies)
