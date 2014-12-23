@@ -62,6 +62,14 @@ describe "CronJob", ->
         setLocalStorageTime '2011-01-01 10:00:00'
         expect(make().isOverdue()).toBeFalsy()
 
+    describe 'makeOverdue', ->
+      it 'makes it overdue when it was not', ->
+        setLocalStorageTime '2011-01-01 10:00:00'
+        inst = make()
+        expect(inst.isOverdue()).toBeFalsy()
+        inst.makeOverdue()
+        expect(inst.isOverdue()).toBeTruthy()
+
     describe 'getTimeout', ->
       it 'returns 20 seconds', ->
         expect(make().getTimeout().asSeconds()).toEqual(20)

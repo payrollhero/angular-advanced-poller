@@ -63,6 +63,12 @@ angular.module('cron.ng').service 'CronScheduler', (CronJob, $timeout, $rootScop
   stopAllJobs = ->
     _(executingJobs).invoke('cancel')
 
+  findJob = (name) ->
+    job = _(jobs).findWhere(name: name)
+    unless job
+      throw "Job #{name} is not a known job"
+    job
+
   @addJob = (jobDefinition) ->
     if executionPromise
       throw "The cron scheduler is running.  Stop it before adding jobs."
@@ -71,9 +77,7 @@ angular.module('cron.ng').service 'CronScheduler', (CronJob, $timeout, $rootScop
     jobs.push cronJob
 
   @whenCompleted = (name) ->
-    job = _(jobs).findWhere(name: name)
-    unless job
-      throw "Job #{name} is not a known job"
+    job = findJob(name)
 
     $scope = $rootScope.$new true
     nextUpdate = $q.defer()
@@ -84,6 +88,12 @@ angular.module('cron.ng').service 'CronScheduler', (CronJob, $timeout, $rootScop
     nextUpdate.promise.finally ->
       $scope.$destroy()
     nextUpdate.promise
+
+  @runNow = (name) ->
+    job = findJob(name)
+    job.makeOverdue()
+    executeNextJobsOnQueue()
+    return
 
   @start = ->
     organizeJobs()

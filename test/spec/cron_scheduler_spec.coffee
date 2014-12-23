@@ -147,6 +147,20 @@ describe "CronScheduler", ->
       subject.stop()
       $timeout.flush()
 
+  describe '#runNow', ->
+    it "runs the job immediately", ->
+      startJobs()
+      job1.promise.resolve('done')
+      job2.promise.resolve('done')
+      $rootScope.$digest()
+      $timeout.flush()
+      expect( job1.spy ).toHaveBeenCalledOnce()
+      subject.runNow('Job1')
+      expect( job1.spy ).toHaveBeenCalledTwice()
+      expect( job2.spy ).toHaveBeenCalledOnce()
+      subject.stop()
+      $timeout.flush()
+
   describe "there are 5 jobs", ->
     before ->
       spyOnJob(job3)

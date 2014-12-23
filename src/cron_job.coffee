@@ -25,6 +25,11 @@ angular.module('cron.ng').factory 'CronJob', (localStorageService, CronJobRunner
     isOverdue: ->
       moment().isAfter(@nextRun) || moment().isSame(@nextRun)
 
+    makeOverdue: ->
+      @nextRun = moment()
+      @_saveRuntime()
+      this
+
     getTimeout: ->
       @timeout || @_intervalOr30Seconds()
 
@@ -34,8 +39,11 @@ angular.module('cron.ng').factory 'CronJob', (localStorageService, CronJobRunner
 
     saveNextRun: ->
       @nextRun = moment().add(@getNextInterval())
-      localStorageService.set("cron.job.nextRun.#{@name}", @nextRun.toISOString())
+      @_saveRuntime()
       this
+
+    _saveRuntime: ->
+      localStorageService.set("cron.job.nextRun.#{@name}", @nextRun.toISOString())
 
     cancel: ->
       @runner.stop() if @runner?
