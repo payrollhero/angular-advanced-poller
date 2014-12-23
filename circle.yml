@@ -1,0 +1,10 @@
+dependencies:
+  cache_directories:
+    - "bower_components"
+    - "node_modules"
+  override:
+    - ./npm_install.sh
+    - bower install
+test:
+  override:
+    - gulp test
