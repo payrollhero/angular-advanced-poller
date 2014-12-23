@@ -21,7 +21,6 @@
     "grunt-contrib-watch": "~0.5.2",
     "grunt-google-cdn": "~0.2.0",
     "grunt-newer": "~0.6.1",
-    "grunt-ngmin": "~0.0.2",
     "grunt-rev": "~0.1.0",
     "grunt-svgmin": "~0.2.0",
     "grunt-usemin": "~2.0.0",
@@ -44,7 +43,7 @@
     "gulp-ng-annotate": "~0.4.3",
     "gulp-uglifyjs": "~0.5.0",
     "run-sequence": "~1.0.2",
-    "gulp-clean": "~0.3.1"
+    "del": "~1.1.0"
   },
   "engines": {
     "node": ">=0.10.0"

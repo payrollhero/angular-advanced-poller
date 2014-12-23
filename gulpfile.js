@@ -6,7 +6,7 @@ var karma = require('karma').server;
 var uglify = require('gulp-uglifyjs');
 var ngAnnotate = require('gulp-ng-annotate');
 var runSequence = require('run-sequence');
-var clean = require('gulp-clean');
+var del = require('del');
 
 /**
  * Run test once and exit
@@ -31,7 +31,7 @@ gulp.task('test:dev', function (done) {
 gulp.task('coffee', function () {
   return gulp.src('./src/*.coffee')
     .pipe(coffee({bare: true}))
-    .pipe(gulp.dest('./.tmp/'))
+    .pipe(gulp.dest('./.tmp'))
 });
 
 gulp.task('concat', function () {
@@ -48,7 +48,7 @@ gulp.task('compress', function(done) {
 });
 
 gulp.task('clean', function() {
-  return gulp.src(["dist/*",".tmp"]).pipe(clean())
+  return del(["dist/*",".tmp"])
 });
 
 gulp.task('default', function() {

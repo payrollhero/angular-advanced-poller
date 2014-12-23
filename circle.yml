@@ -8,4 +8,3 @@ dependencies:
 test:
   override:
     - gulp test
-    
