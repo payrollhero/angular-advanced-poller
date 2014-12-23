@@ -184,3 +184,15 @@ describe "CronScheduler", ->
       expect(job3.spy).toHaveBeenCalledOnce()
       subject.stop()
       $timeout.flush()
+
+  describe '#setConcurrency', ->
+    before ->
+      subject.setConcurrency(1)
+      startJobs()
+
+    it "executes just 1 of them", ->
+      expect(job1.spy).toHaveBeenCalled()
+      expect(job2.spy).not.toHaveBeenCalled()
+      subject.stop()
+      $timeout.flush()
+

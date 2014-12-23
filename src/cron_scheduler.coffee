@@ -88,6 +88,7 @@ angular.module('cron.ng').service 'CronScheduler', (CronJob, $timeout, $rootScop
     cronJob = jobFromDefinition(jobDefinition)
     cronJob.validate()
     jobs.push cronJob
+    return
 
   @whenCompleted = (name) ->
     job = findJob(name)
@@ -110,16 +111,22 @@ angular.module('cron.ng').service 'CronScheduler', (CronJob, $timeout, $rootScop
 
   @start = ->
     organizeJobs()
-    console.debug("Cron-ng started")
+    console.debug("Cron.Ng started")
     executeJobs()
+    return
 
   @stop = ->
-    console.debug("Cron-ng stopping.")
+    console.debug("Cron.Ng stopping.")
     stopAllJobs()
     $timeout.cancel(executionPromise) if executionPromise
     executionPromise = null
     unless $rootScope.$$phase
       $rootScope.$digest() #Force a digest to clear the timeouts before returning.
-    console.debug("Cron-ng stopped.")
+    console.debug("Cron.Ng stopped.")
+    return
+
+  @setConcurrency = (concurrency) ->
+    maximumConcurrency = concurrency
+    return
 
   return

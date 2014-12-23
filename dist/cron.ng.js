@@ -317,7 +317,7 @@ angular.module('cron.ng').service('CronScheduler', function(CronJob, $timeout, $
     }
     cronJob = jobFromDefinition(jobDefinition);
     cronJob.validate();
-    return jobs.push(cronJob);
+    jobs.push(cronJob);
   };
   this.whenCompleted = function(name) {
     var $scope, job, nextUpdate;
@@ -347,11 +347,11 @@ angular.module('cron.ng').service('CronScheduler', function(CronJob, $timeout, $
   };
   this.start = function() {
     organizeJobs();
-    console.debug("Cron-ng started");
-    return executeJobs();
+    console.debug("Cron.Ng started");
+    executeJobs();
   };
   this.stop = function() {
-    console.debug("Cron-ng stopping.");
+    console.debug("Cron.Ng stopping.");
     stopAllJobs();
     if (executionPromise) {
       $timeout.cancel(executionPromise);
@@ -360,6 +360,9 @@ angular.module('cron.ng').service('CronScheduler', function(CronJob, $timeout, $
     if (!$rootScope.$$phase) {
       $rootScope.$digest();
     }
-    return console.debug("Cron-ng stopped.");
+    console.debug("Cron.Ng stopped.");
+  };
+  this.setConcurrency = function(concurrency) {
+    maximumConcurrency = concurrency;
   };
 });
