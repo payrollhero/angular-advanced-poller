@@ -113,14 +113,15 @@ describe "CronScheduler", ->
         cbForSpy = (spy) ->
           (event, args...) ->
             spy(args...)
-        scope.$on("cron.ng.job.Job1.success", cbForSpy(successSpy))
-        scope.$on("cron.ng.job.Job2.failure", cbForSpy(failSpy))
-        scope.$on("cron.ng.job.Job1.start", cbForSpy(startSpy))
-        scope.$on("cron.ng.job.Job1.finish", cbForSpy(finishSpy))
-        scope.$on('cron.ng.job.Job2.finish', cbForSpy(finish2Spy))
 
-        console.log("b4 start")
-        startJobs()
+        configure()
+        subject.whenSucceeded 'Job1', scope, cbForSpy(successSpy)
+        subject.whenFailed 'Job2', scope,  cbForSpy(failSpy)
+        subject.whenStarted 'Job1', scope,  cbForSpy(startSpy)
+        subject.whenFinished 'Job1', scope,  cbForSpy(finishSpy)
+        subject.whenFinished 'Job2', scope,  cbForSpy(finish2Spy)
+        subject.start()
+
         $rootScope.$digest()
         expect( startSpy ).toHaveBeenCalled()
         job1.promise.resolve(["Finished","Successfully"])

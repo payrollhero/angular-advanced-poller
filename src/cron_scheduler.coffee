@@ -152,7 +152,7 @@ angular.module('cron.ng').service 'CronScheduler', (CronJob, $timeout, $rootScop
 
     @description Calls the callback each time the job starts.
   ###
-  @whenStarted = (job, $scope, callback) ->
+  @whenStarted = (name, $scope, callback) ->
     job = findJob(name)
     onJobStarted $scope, job, callback
 
@@ -163,7 +163,7 @@ angular.module('cron.ng').service 'CronScheduler', (CronJob, $timeout, $rootScop
 
     @description Calls the callback each time the job is successful.
   ###
-  @whenSucceeded = (job, $scope, callback) ->
+  @whenSucceeded = (name, $scope, callback) ->
     job = findJob(name)
     onJobSuccess $scope, job, callback
 
@@ -174,7 +174,7 @@ angular.module('cron.ng').service 'CronScheduler', (CronJob, $timeout, $rootScop
 
     @description Calls the callback each time the job fails.
   ###
-  @whenFailed = (job, $scope, callback) ->
+  @whenFailed = (name, $scope, callback) ->
     job = findJob(name)
     onJobFailure $scope, job, callback
 
@@ -185,7 +185,7 @@ angular.module('cron.ng').service 'CronScheduler', (CronJob, $timeout, $rootScop
 
     @description Calls the callback each time the job finishes.
   ###
-  @whenFinished = (job, $scope, callback) ->
+  @whenFinished = (name, $scope, callback) ->
     job = findJob(name)
     onJobFinished $scope, job, callback
 

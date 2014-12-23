@@ -392,7 +392,8 @@ angular.module('cron.ng').service('CronScheduler', function(CronJob, $timeout, $
   
     @description Calls the callback each time the job starts.
    */
-  this.whenStarted = function(job, $scope, callback) {
+  this.whenStarted = function(name, $scope, callback) {
+    var job;
     job = findJob(name);
     return onJobStarted($scope, job, callback);
   };
@@ -404,7 +405,8 @@ angular.module('cron.ng').service('CronScheduler', function(CronJob, $timeout, $
   
     @description Calls the callback each time the job is successful.
    */
-  this.whenSucceeded = function(job, $scope, callback) {
+  this.whenSucceeded = function(name, $scope, callback) {
+    var job;
     job = findJob(name);
     return onJobSuccess($scope, job, callback);
   };
@@ -416,7 +418,8 @@ angular.module('cron.ng').service('CronScheduler', function(CronJob, $timeout, $
   
     @description Calls the callback each time the job fails.
    */
-  this.whenFailed = function(job, $scope, callback) {
+  this.whenFailed = function(name, $scope, callback) {
+    var job;
     job = findJob(name);
     return onJobFailure($scope, job, callback);
   };
@@ -428,7 +431,8 @@ angular.module('cron.ng').service('CronScheduler', function(CronJob, $timeout, $
   
     @description Calls the callback each time the job finishes.
    */
-  this.whenFinished = function(job, $scope, callback) {
+  this.whenFinished = function(name, $scope, callback) {
+    var job;
     job = findJob(name);
     return onJobFinished($scope, job, callback);
   };
