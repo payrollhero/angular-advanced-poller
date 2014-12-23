@@ -204,11 +204,12 @@ angular.module('cron.ng').factory('CronJobRunner', function($q, $timeout) {
 var __slice = [].slice;
 
 angular.module('cron.ng').service('CronScheduler', function(CronJob, $timeout, $rootScope, $q) {
-  var announceJobCompletion, announceJobFailure, announceJobFinished, announceJobStarted, executeJobs, executeNextJobsOnQueue, executingJobs, executionPromise, findJob, finishJobAndRunNextJobOnQueue, jobFromDefinition, jobs, maximumConcurrency, onJobFailure, onJobSuccess, organizeJobs, stopAllJobs;
+  var announceJobCompletion, announceJobFailure, announceJobFinished, announceJobStarted, calculateTimeToNextJob, closestJobTime, executeJobs, executeNextJobsOnQueue, executingJobs, executionPromise, findJob, finishJobAndRunNextJobOnQueue, jobFromDefinition, jobs, maximumConcurrency, minWaitTime, onJobFailure, onJobSuccess, organizeJobs, stopAllJobs;
   jobs = [];
   executingJobs = [];
   executionPromise = null;
   maximumConcurrency = 4;
+  minWaitTime = 100;
   jobFromDefinition = function(definition) {
     var job;
     job = new CronJob;
@@ -251,6 +252,26 @@ angular.module('cron.ng').service('CronScheduler', function(CronJob, $timeout, $
       return $rootScope.$broadcast.apply($rootScope, ["cron.ng.job." + job.name + ".failure"].concat(__slice.call(args)));
     };
   };
+  closestJobTime = function() {
+    var now;
+    now = moment();
+    return _(jobs).chain().map(function(job) {
+      return Math.abs((job.nextRun || now).diff(now));
+    }).min().value();
+  };
+  calculateTimeToNextJob = function() {
+    var jobTime;
+    if (_(jobs).any(function(job) {
+      return job.isOverdue();
+    })) {
+      return minWaitTime;
+    }
+    jobTime = closestJobTime();
+    if (jobTime === Infinity) {
+      jobTime = 0;
+    }
+    return _.max([minWaitTime, jobTime]);
+  };
   executeNextJobsOnQueue = function() {
     var nextJob, readyJobs;
     if (!executionPromise) {
@@ -273,7 +294,7 @@ angular.module('cron.ng').service('CronScheduler', function(CronJob, $timeout, $
     return jobs = _(jobs).sortBy('priority');
   };
   executeJobs = function() {
-    executionPromise = $timeout(executeJobs, 100);
+    executionPromise = $timeout(executeJobs, calculateTimeToNextJob());
     return executeNextJobsOnQueue();
   };
   stopAllJobs = function() {

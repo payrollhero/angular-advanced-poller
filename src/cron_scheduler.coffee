@@ -5,6 +5,7 @@ angular.module('cron.ng').service 'CronScheduler', (CronJob, $timeout, $rootScop
   executingJobs = []
   executionPromise = null
   maximumConcurrency = 4
+  minWaitTime = 100
 
   jobFromDefinition = (definition) ->
     job = new CronJob
@@ -40,6 +41,18 @@ angular.module('cron.ng').service 'CronScheduler', (CronJob, $timeout, $rootScop
       console.debug("Job #{job.name} failed.")
       $rootScope.$broadcast("cron.ng.job.#{job.name}.failure", args...)
 
+  closestJobTime = ->
+    now = moment()
+    _(jobs).chain().map( (job) ->
+      Math.abs((job.nextRun || now).diff(now))
+    ).min().value()
+
+  calculateTimeToNextJob = ->
+    return minWaitTime if _(jobs).any( (job) -> job.isOverdue())
+    jobTime = closestJobTime()
+    jobTime = 0 if jobTime is Infinity
+    _.max([minWaitTime, jobTime])
+
   executeNextJobsOnQueue = ->
     return unless executionPromise #shortcut out if we're stopped
     readyJobs = _(jobs).filter( (job) -> job.isOverdue())
@@ -57,7 +70,7 @@ angular.module('cron.ng').service 'CronScheduler', (CronJob, $timeout, $rootScop
     jobs = _(jobs).sortBy('priority')
 
   executeJobs = ->
-    executionPromise = $timeout executeJobs, 100
+    executionPromise = $timeout executeJobs, calculateTimeToNextJob()
     executeNextJobsOnQueue()
 
   stopAllJobs = ->
