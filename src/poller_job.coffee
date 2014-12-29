@@ -1,7 +1,7 @@
 'use strict'
 
-angular.module('cron.ng').factory 'CronJob', (localStorageService, CronJobRunner) ->
-  class CronJob
+angular.module('angular-advanced-poller').factory 'PollerJob', (localStorageService, PollerJobRunner) ->
+  class PollerJob
 
     validate: ->
       throw "Job must have a name" unless @name
@@ -19,7 +19,7 @@ angular.module('cron.ng').factory 'CronJob', (localStorageService, CronJobRunner
         @interval.asMilliseconds()
 
     initialize: ->
-      @nextRun = moment(localStorageService.get("cron.job.nextRun.#{@name}") || new Date())
+      @nextRun = moment(localStorageService.get("poller.job.nextRun.#{@name}") || new Date())
       this
 
     isOverdue: ->
@@ -43,7 +43,7 @@ angular.module('cron.ng').factory 'CronJob', (localStorageService, CronJobRunner
       this
 
     _saveRuntime: ->
-      localStorageService.set("cron.job.nextRun.#{@name}", @nextRun.toISOString())
+      localStorageService.set("poller.job.nextRun.#{@name}", @nextRun.toISOString())
 
     cancel: ->
       @runner.stop() if @runner?
@@ -53,7 +53,7 @@ angular.module('cron.ng').factory 'CronJob', (localStorageService, CronJobRunner
     execute: ->
       @_endPreviousRunner()
       @saveNextRun()
-      @runner = new CronJobRunner(this)
+      @runner = new PollerJobRunner(this)
       @runner.run()
 
     _endPreviousRunner: ->

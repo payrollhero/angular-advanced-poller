@@ -1,5 +1,5 @@
 ###*
- @license $cronScheduler
+ @license $pollerScheduler
  (c) 2014 Bram Whillock (bramski)
  License: BSD
 ###
@@ -10,4 +10,4 @@ dependencies = [
   'LocalStorageModule'
 ]
 
-angular.module('cron.ng', dependencies)
+angular.module('angular-advanced-poller', dependencies)

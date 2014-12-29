@@ -1,6 +1,6 @@
 
 /**
- @license $cronScheduler
+ @license $pollerScheduler
  (c) 2014 Bram Whillock (bramski)
  License: BSD
  */
@@ -9,15 +9,15 @@ var dependencies;
 
 dependencies = ['LocalStorageModule'];
 
-angular.module('cron.ng', dependencies);
+angular.module('angular-advanced-poller', dependencies);
 
 'use strict';
-angular.module('cron.ng').factory('CronJob', function(localStorageService, CronJobRunner) {
-  var CronJob;
-  return CronJob = (function() {
-    function CronJob() {}
+angular.module('angular-advanced-poller').factory('PollerJob', function(localStorageService, PollerJobRunner) {
+  var PollerJob;
+  return PollerJob = (function() {
+    function PollerJob() {}
 
-    CronJob.prototype.validate = function() {
+    PollerJob.prototype.validate = function() {
       if (!this.name) {
         throw "Job must have a name";
       }
@@ -41,7 +41,7 @@ angular.module('cron.ng').factory('CronJob', function(localStorageService, CronJ
       }
     };
 
-    CronJob.prototype.getNextInterval = function() {
+    PollerJob.prototype.getNextInterval = function() {
       if (this.randomOffset != null) {
         return this.interval.asMilliseconds() + Math.ceil(Math.random() * this.randomOffset.asMilliseconds());
       } else {
@@ -49,26 +49,26 @@ angular.module('cron.ng').factory('CronJob', function(localStorageService, CronJ
       }
     };
 
-    CronJob.prototype.initialize = function() {
-      this.nextRun = moment(localStorageService.get("cron.job.nextRun." + this.name) || new Date());
+    PollerJob.prototype.initialize = function() {
+      this.nextRun = moment(localStorageService.get("poller.job.nextRun." + this.name) || new Date());
       return this;
     };
 
-    CronJob.prototype.isOverdue = function() {
+    PollerJob.prototype.isOverdue = function() {
       return moment().isAfter(this.nextRun) || moment().isSame(this.nextRun);
     };
 
-    CronJob.prototype.makeOverdue = function() {
+    PollerJob.prototype.makeOverdue = function() {
       this.nextRun = moment();
       this._saveRuntime();
       return this;
     };
 
-    CronJob.prototype.getTimeout = function() {
+    PollerJob.prototype.getTimeout = function() {
       return this.timeout || this._intervalOr30Seconds();
     };
 
-    CronJob.prototype._intervalOr30Seconds = function() {
+    PollerJob.prototype._intervalOr30Seconds = function() {
       return _.min([
         this.interval, moment.duration({
           seconds: 30
@@ -78,17 +78,17 @@ angular.module('cron.ng').factory('CronJob', function(localStorageService, CronJ
       });
     };
 
-    CronJob.prototype.saveNextRun = function() {
+    PollerJob.prototype.saveNextRun = function() {
       this.nextRun = moment().add(this.getNextInterval());
       this._saveRuntime();
       return this;
     };
 
-    CronJob.prototype._saveRuntime = function() {
-      return localStorageService.set("cron.job.nextRun." + this.name, this.nextRun.toISOString());
+    PollerJob.prototype._saveRuntime = function() {
+      return localStorageService.set("poller.job.nextRun." + this.name, this.nextRun.toISOString());
     };
 
-    CronJob.prototype.cancel = function() {
+    PollerJob.prototype.cancel = function() {
       if (this.runner != null) {
         this.runner.stop();
       }
@@ -98,21 +98,21 @@ angular.module('cron.ng').factory('CronJob', function(localStorageService, CronJ
       }
     };
 
-    CronJob.prototype.execute = function() {
+    PollerJob.prototype.execute = function() {
       this._endPreviousRunner();
       this.saveNextRun();
-      this.runner = new CronJobRunner(this);
+      this.runner = new PollerJobRunner(this);
       return this.runner.run();
     };
 
-    CronJob.prototype._endPreviousRunner = function() {
+    PollerJob.prototype._endPreviousRunner = function() {
       if (this.runner && this.runner.running) {
         console.debug("Runner for job " + job.name + " is still running.");
         return this.runner.stop();
       }
     };
 
-    return CronJob;
+    return PollerJob;
 
   })();
 });
@@ -120,15 +120,15 @@ angular.module('cron.ng').factory('CronJob', function(localStorageService, CronJ
 'use strict';
 var __slice = [].slice;
 
-angular.module('cron.ng').factory('CronJobRunner', function($q, $timeout) {
-  var CronJobRunner;
-  CronJobRunner = (function() {
-    function CronJobRunner(job) {
+angular.module('angular-advanced-poller').factory('PollerJobRunner', function($q, $timeout) {
+  var PollerJobRunner;
+  PollerJobRunner = (function() {
+    function PollerJobRunner(job) {
       this.job = job;
       this.running = true;
     }
 
-    CronJobRunner.prototype.run = function() {
+    PollerJobRunner.prototype.run = function() {
       var promise;
       console.debug("Running job " + this.job.name);
       this.promise = $q.defer();
@@ -158,13 +158,13 @@ angular.module('cron.ng').factory('CronJobRunner', function($q, $timeout) {
       })(this));
     };
 
-    CronJobRunner.prototype.stop = function() {
+    PollerJobRunner.prototype.stop = function() {
       console.debug("Stopping job " + this.job.name);
       this._cancelTimeout();
       return this.promise.resolve('Stopped');
     };
 
-    CronJobRunner.prototype._run = function() {
+    PollerJobRunner.prototype._run = function() {
       var result;
       result = this.job.run();
       if (result && _.isFunction(result["finally"])) {
@@ -174,12 +174,12 @@ angular.module('cron.ng').factory('CronJobRunner', function($q, $timeout) {
       }
     };
 
-    CronJobRunner.prototype._timeout = function() {
+    PollerJobRunner.prototype._timeout = function() {
       console.debug("Timed out job " + this.job.name);
       return this.promise.reject('TimedOut');
     };
 
-    CronJobRunner.prototype._scheduleTimeout = function() {
+    PollerJobRunner.prototype._scheduleTimeout = function() {
       return this.timeoutPromise = $timeout((function(_this) {
         return function() {
           return _this.timeoutPromise = $timeout(_.bind(_this._timeout, _this), _this.job.getTimeout().asMilliseconds());
@@ -187,27 +187,27 @@ angular.module('cron.ng').factory('CronJobRunner', function($q, $timeout) {
       })(this), 0);
     };
 
-    CronJobRunner.prototype._cancelTimeout = function() {
+    PollerJobRunner.prototype._cancelTimeout = function() {
       if (this.timeoutPromise) {
         $timeout.cancel(this.timeoutPromise);
       }
       return this.timeoutPromise = null;
     };
 
-    return CronJobRunner;
+    return PollerJobRunner;
 
   })();
-  return CronJobRunner;
+  return PollerJobRunner;
 });
 
 'use strict';
 
 /**
   @ngdoc service
-  @name cron.ng.CronScheduler
-  @service CronScheduler
+  @name angular-advanced-poller.PollerScheduler
+  @service PollerScheduler
   @description
-    The CronScheduler is a promise based scheduleer.
+    The PollerScheduler is a promise based scheduleer.
     It allows you to schedule jobs for regular periodic runs based upon a schedule.  It has a few main features.
     * Has a configurable concurrency so that only so many jobs may run at the same time.  Jobs are scheduled based upon
       priority.
@@ -218,8 +218,8 @@ angular.module('cron.ng').factory('CronJobRunner', function($q, $timeout) {
  */
 var __slice = [].slice;
 
-angular.module('cron.ng').service('CronScheduler', function(CronJob, $timeout, $rootScope, $q) {
-  var announceJobCompletion, announceJobFailure, announceJobFinished, announceJobStarted, calculateTimeToNextJob, closestJobTime, executeJobs, executeNextJobsOnQueue, executingJobs, executionPromise, findJob, finishJobAndRunNextJobOnQueue, jobFromDefinition, jobs, maximumConcurrency, minWaitTime, onJobFailure, onJobFinished, onJobStarted, onJobSuccess, organizeJobs, stopAllJobs;
+angular.module('angular-advanced-poller').service('PollerScheduler', function(PollerJob, $timeout, $rootScope, $q) {
+  var announceJobCompletion, announceJobFailure, announceJobFinished, announceJobStarted, calculateTimeToNextJob, closestJobTime, executeJobs, executeNextJobsOnQueue, executingJobs, executionPromise, findJob, finishJobAndRunNextJobOnQueue, hasJob, jobFromDefinition, jobs, maximumConcurrency, minWaitTime, onJobFailure, onJobFinished, onJobStarted, onJobSuccess, organizeJobs, stopAllJobs;
   jobs = [];
   executingJobs = [];
   executionPromise = null;
@@ -227,7 +227,10 @@ angular.module('cron.ng').service('CronScheduler', function(CronJob, $timeout, $
   minWaitTime = 100;
   jobFromDefinition = function(definition) {
     var job;
-    job = new CronJob;
+    job = new PollerJob;
+    if (hasJob(definition.name)) {
+      throw "A job of name " + definition.name + " is already registered";
+    }
     _.defaults(job, definition);
     job.initialize();
     return job;
@@ -240,36 +243,36 @@ angular.module('cron.ng').service('CronScheduler', function(CronJob, $timeout, $
     };
   };
   announceJobFinished = function(job) {
-    return $rootScope.$broadcast("cron.ng.job." + job.name + ".finish");
+    return $rootScope.$broadcast("poller.job." + job.name + ".finish");
   };
   announceJobStarted = function(job) {
-    return $rootScope.$broadcast("cron.ng.job." + job.name + ".start");
+    return $rootScope.$broadcast("poller.job." + job.name + ".start");
   };
   announceJobCompletion = function(job) {
     return function() {
       var args;
       args = 1 <= arguments.length ? __slice.call(arguments, 0) : [];
-      return $rootScope.$broadcast.apply($rootScope, ["cron.ng.job." + job.name + ".success"].concat(__slice.call(args)));
+      return $rootScope.$broadcast.apply($rootScope, ["poller.job." + job.name + ".success"].concat(__slice.call(args)));
     };
   };
   announceJobFailure = function(job) {
     return function() {
       var args;
       args = 1 <= arguments.length ? __slice.call(arguments, 0) : [];
-      return $rootScope.$broadcast.apply($rootScope, ["cron.ng.job." + job.name + ".failure"].concat(__slice.call(args)));
+      return $rootScope.$broadcast.apply($rootScope, ["poller.job." + job.name + ".failure"].concat(__slice.call(args)));
     };
   };
   onJobSuccess = function(scope, job, callback) {
-    return scope.$on("cron.ng.job." + job.name + ".success", callback);
+    return scope.$on("poller.job." + job.name + ".success", callback);
   };
   onJobFailure = function(scope, job, callback) {
-    return scope.$on("cron.ng.job." + job.name + ".failure", callback);
+    return scope.$on("poller.job." + job.name + ".failure", callback);
   };
   onJobStarted = function(scope, job, callback) {
-    return scope.$on("cron.ng.job." + job.name + ".start", callback);
+    return scope.$on("poller.job." + job.name + ".start", callback);
   };
   onJobFinished = function(scope, job, callback) {
-    return scope.$on("cron.ng.job." + job.name + ".finish", callback);
+    return scope.$on("poller.job." + job.name + ".finish", callback);
   };
   closestJobTime = function() {
     var now;
@@ -319,6 +322,11 @@ angular.module('cron.ng').service('CronScheduler', function(CronJob, $timeout, $
   stopAllJobs = function() {
     return _(executingJobs).invoke('cancel');
   };
+  hasJob = function(name) {
+    return _(jobs).findWhere({
+      name: name
+    }) != null;
+  };
   findJob = function(name) {
     var job;
     job = _(jobs).findWhere({
@@ -332,12 +340,12 @@ angular.module('cron.ng').service('CronScheduler', function(CronJob, $timeout, $
 
   /*
     @ngdoc method
-    @name CronScheduler.addJob
+    @name PollerScheduler.addJob
     @function
   
     @description Add a job to this scheduler.  Must be done before calling 'start'
     @example
-      CronScheduler.addJob({
+      PollerScheduler.addJob({
         name: "Job1",
         priority: 2,
         run: ( -> true),
@@ -347,18 +355,18 @@ angular.module('cron.ng').service('CronScheduler', function(CronJob, $timeout, $
       })
    */
   this.addJob = function(jobDefinition) {
-    var cronJob;
+    var job;
     if (executionPromise) {
-      throw "The cron scheduler is running.  Stop it before adding jobs.";
+      throw "The scheduler is running.  Stop it before adding jobs.";
     }
-    cronJob = jobFromDefinition(jobDefinition);
-    cronJob.validate();
-    jobs.push(cronJob);
+    job = jobFromDefinition(jobDefinition);
+    job.validate();
+    jobs.push(job);
   };
 
   /*
     @ngdoc method
-    @name CronScheduler.onNextRunOf
+    @name PollerScheduler.onNextRunOf
     @function
   
     @description Returns a promise which is fulfilled when the next run of
@@ -387,7 +395,7 @@ angular.module('cron.ng').service('CronScheduler', function(CronJob, $timeout, $
 
   /*
     @ngdoc method
-    @name CronScheduler.whenStarted
+    @name PollerScheduler.whenStarted
     @function
   
     @description Calls the callback each time the job starts.
@@ -400,7 +408,7 @@ angular.module('cron.ng').service('CronScheduler', function(CronJob, $timeout, $
 
   /*
     @ngdoc method
-    @name CronScheduler.whenSucceeded
+    @name PollerScheduler.whenSucceeded
     @function
   
     @description Calls the callback each time the job is successful.
@@ -413,7 +421,7 @@ angular.module('cron.ng').service('CronScheduler', function(CronJob, $timeout, $
 
   /*
     @ngdoc method
-    @name CronScheduler.whenFailed
+    @name PollerScheduler.whenFailed
     @function
   
     @description Calls the callback each time the job fails.
@@ -426,7 +434,7 @@ angular.module('cron.ng').service('CronScheduler', function(CronJob, $timeout, $
 
   /*
     @ngdoc method
-    @name CronScheduler.whenFinished
+    @name PollerScheduler.whenFinished
     @function
   
     @description Calls the callback each time the job finishes.
@@ -439,7 +447,7 @@ angular.module('cron.ng').service('CronScheduler', function(CronJob, $timeout, $
 
   /*
     @ngdoc method
-    @name CronScheduler.runNow
+    @name PollerScheduler.runNow
     @function
   
     @description Schedule the named job to run immediately.  Running of the job is still
@@ -455,27 +463,27 @@ angular.module('cron.ng').service('CronScheduler', function(CronJob, $timeout, $
 
   /*
     @ngdoc method
-    @name CronScheduler.start
+    @name PollerScheduler.start
     @function
   
-    @description Start the cron scheduler.  Waiting jobs will run immediately.
+    @description Start the scheduler.  Waiting jobs will run immediately.
    */
   this.start = function() {
-    console.debug("Cron.Ng starting");
+    console.debug("AdvancedPoller starting");
     organizeJobs();
     executeJobs();
-    console.debug("Cron.Ng started");
+    console.debug("AdvancedPoller started");
   };
 
   /*
     @ngdoc method
-    @name CronScheduler.stop
+    @name PollerScheduler.stop
     @function
   
-    @description Stop the cron scheduler.  Jobs which can be stopped will be stopped immediately.
+    @description Stop the scheduler.  Jobs which can be stopped will be stopped immediately.
    */
   this.stop = function() {
-    console.debug("Cron.Ng stopping.");
+    console.debug("AdvancedPoller stopping.");
     stopAllJobs();
     if (executionPromise) {
       $timeout.cancel(executionPromise);
@@ -484,7 +492,8 @@ angular.module('cron.ng').service('CronScheduler', function(CronJob, $timeout, $
     if (!$rootScope.$$phase) {
       $rootScope.$digest();
     }
-    console.debug("Cron.Ng stopped.");
+    executingJobs = [];
+    console.debug("AdvancedPoller stopped.");
   };
 
   /*
@@ -496,5 +505,11 @@ angular.module('cron.ng').service('CronScheduler', function(CronJob, $timeout, $
    */
   this.setConcurrency = function(concurrency) {
     maximumConcurrency = concurrency;
+  };
+  this.clearJobs = function() {
+    if (executionPromise != null) {
+      throw "Must be stopped to clear jobs";
+    }
+    jobs = [];
   };
 });

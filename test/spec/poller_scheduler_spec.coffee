@@ -1,6 +1,6 @@
 'use strict'
 
-describe "CronScheduler", ->
+describe "PollerScheduler", ->
   dateTime = "2010-01-01 10:00:00"
   initializeModule()
   subject = {}
@@ -45,9 +45,9 @@ describe "CronScheduler", ->
       job.promise = $q.defer()
       job.promise.promise
 
-  before inject (CronScheduler, _$q_, _$timeout_, _$rootScope_) ->
+  before inject (PollerScheduler, _$q_, _$timeout_, _$rootScope_) ->
     localStorage.clear()
-    subject = CronScheduler
+    subject = PollerScheduler
     sandbox = sinon.sandbox.create()
     sandbox.useFakeTimers(moment(dateTime).unix() * 1000)
     $q = _$q_

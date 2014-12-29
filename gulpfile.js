@@ -31,19 +31,19 @@ gulp.task('test:dev', function (done) {
 gulp.task('coffee', function () {
   return gulp.src('./src/*.coffee')
     .pipe(coffee({bare: true}))
-    .pipe(gulp.dest('./.tmp'))
+    .pipe(gulp.dest('./.tmp/'))
 });
 
 gulp.task('concat', function () {
   return gulp.src('.tmp/*.js')
-    .pipe(concat('cron.ng.js'))
+    .pipe(concat('angular-advanced-poller.js'))
     .pipe(gulp.dest('./dist/'))
 });
 
 gulp.task('compress', function(done) {
   return gulp.src('.tmp/*.js')
     .pipe(ngAnnotate())
-    .pipe(uglify('cron.ng.min.js'))
+    .pipe(uglify('angular-advanced-poller.min.js'))
     .pipe(gulp.dest('./dist/'))
 });
 

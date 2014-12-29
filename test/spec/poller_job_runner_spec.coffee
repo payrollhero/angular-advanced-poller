@@ -1,19 +1,19 @@
 'use strict'
 
-describe "CronJobRunner", ->
+describe "PollerJobRunner", ->
   dateTime = "2010-01-01 10:00:00"
   initializeModule()
   subject = {}
-  CronJob = {}
+  PollerJob = {}
   params = {}
   $q = {}
   $timeout = {}
 
-  before inject (_CronJob_, CronJobRunner, _$q_, _$timeout_) ->
-    subject = CronJobRunner
+  before inject (_PollerJob_, PollerJobRunner, _$q_, _$timeout_) ->
+    subject = PollerJobRunner
     @sinon = sinon.sandbox.create()
     @sinon.useFakeTimers(moment(dateTime).unix() * 1000)
-    CronJob = _CronJob_
+    PollerJob = _PollerJob_
     $q = _$q_
     $timeout = _$timeout_
     params =
@@ -28,7 +28,7 @@ describe "CronJobRunner", ->
     @sinon.restore()
 
   make = ->
-    inst = new CronJob()
+    inst = new PollerJob()
     _.defaults(inst, params)
     inst.validate()
     inst.initialize()

@@ -15,4 +15,4 @@ window.before = beforeEach
 
 window.initializeModule = ->
   before ->
-      module('cron.ng')
+      module('angular-advanced-poller')

@@ -1,9 +1,9 @@
 'use strict'
 
-angular.module('cron.ng')
-  .factory 'CronJobRunner', ($q, $timeout) ->
+angular.module('angular-advanced-poller')
+  .factory 'PollerJobRunner', ($q, $timeout) ->
 
-    class CronJobRunner
+    class PollerJobRunner
       constructor: (job) ->
         @job = job
         @running = true
@@ -49,4 +49,4 @@ angular.module('cron.ng')
         $timeout.cancel(@timeoutPromise) if @timeoutPromise
         @timeoutPromise = null
 
-    return CronJobRunner
+    return PollerJobRunner

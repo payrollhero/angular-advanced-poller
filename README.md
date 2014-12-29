@@ -1,9 +1,9 @@
-cron.ng
+angular-advanced-poller
 =======
 
-![build status](https://circleci.com/gh/payrollhero/cron.ng.png?circle-token=:circle-token)
+![build status](https://circleci.com/gh/payrollhero/angular-advanced-poller.png?circle-token=:circle-token)
 
-Promise based stateful angular scheduler.  Cron.Ng.
+Promise based stateful angular poller scheduler.
 
 ## Installation
 
@@ -21,32 +21,32 @@ bower install --save angular-advanced-poller
 
 ## Dependencies
 
-Cron.Ng relies upon the LocalStorageModule to store the runtimes of the cron jobs.
+Angular Advanced Poller relies upon the LocalStorageModule to store the runtimes of the jobs.
 It also uses momentjs and underscore.
 
 ## Usage
 
-Add "cron.ng" to your angular app's dependencies.
-Inject the ```CronScheduler``` wherever you want to use it.
-Add jobs using ```CronScheduler.addJob```
-Start the scheduler by using ```CronScheduler.start```
+Add "angular-advanced-poller" to your angular app's dependencies.
+Inject the ```PollerScheduler``` wherever you want to use it.
+Add jobs using ```PollerScheduler.addJob```
+Start the scheduler by using ```PollerScheduler.start```
 
 ### Example
 
 ```coffee
-angular.module('myModule', ['cron.ng']).run (CronScheduler, $http) ->
-  CronScheduler.addJob
+angular.module('myModule', ['angular-advanced-poller']).run (PollerScheduler, $http) ->
+  PollerScheduler.addJob
     name: 'getChanges'
     priority: 1
     interval: moment.duration(seconds: 30)
     timeout: moment.duration(seconds: 25)
-    run: $http.get("/changes")
+    run: ( -> $http.get("/changes") )
 
-   CronScheduler.start()
+  PollerScheduler.start()
 ```
 
 ### Job Definitions
-The cron scheduler addJob defines the task you wish to run.  Pass it the parameters of your job.
+The poller scheduler addJob defines the task you wish to run.  Pass it the parameters of your job.
 
 - name -> A unique name for your job
 - priority -> An integer priority for this job
@@ -57,7 +57,7 @@ The cron scheduler addJob defines the task you wish to run.  Pass it the paramet
 - stop -> (optional) Provides a function which can stop processes begun by 'run'
 
 ```coffee
-CronScheduler.addJob({
+PollerScheduler.addJob({
   name: 'uniqueName'
   priority: 1 # Must be integer priority
   run: $q.defer().promise # Must be a promise
@@ -73,17 +73,17 @@ It will at maximum run this number of jobs at a time.  This is useful
 For limiting polling mechanisms to a fixed number at app startup.
 
 ```coffee
-CronScheduler.setConcurrency(3)
+PollerScheduler.setConcurrency(3)
 ```
 
 ### Starting and Stopping
 There are three methods to help you run your jobs.
-- CronScheduler.start -> Starts all jobs.  They will be scheduled now if they have not been run before.
-- CronScheduler.stop -> Stops future jobs.  If they provide a 'stop' they will be cancelled immediately.
-- CronScheduler.runNow(name) -> Sets a named job to execute immediately.
+- PollerScheduler.start -> Starts all jobs.  They will be scheduled now if they have not been run before.
+- PollerScheduler.stop -> Stops future jobs.  If they provide a 'stop' they will be cancelled immediately.
+- PollerScheduler.runNow(name) -> Sets a named job to execute immediately.
 
 ### Job Events
-The Cron Scheduler announces the completion of named jobs via $rootScope.$broadcast.
+The Scheduler announces the completion of named jobs via $rootScope.$broadcast.
 The 4 lifecycle events of a job have associated events.
 - Start
 - Success
@@ -93,10 +93,10 @@ The 4 lifecycle events of a job have associated events.
 You may listen to these events with the following methods:
 
 ```coffee
-CronScheduler.whenStarted name, $scope, callback
-CronScheduler.whenSucceeded name, $scope, callback
-CronScheduler.whenFailed name, $scope, callback
-CronScheduler.whenFinished name, $scope, callback
+PollerScheduler.whenStarted name, $scope, callback
+PollerScheduler.whenSucceeded name, $scope, callback
+PollerScheduler.whenFailed name, $scope, callback
+PollerScheduler.whenFinished name, $scope, callback
 ```
 These events will broadcast at each time an interval run of the job is executed.
 
@@ -106,7 +106,7 @@ If you simply want to wait on the very next execution of a job, use ```onNextRun
 Example:
 
 ```coffee
-CronScheduler.onNextRunOf('updateSchedules').then (schedules) ->
+PollerScheduler.onNextRunOf('updateSchedules').then (schedules) ->
   console.log('schedules updated!')
 ```
 

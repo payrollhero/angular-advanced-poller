@@ -2,10 +2,10 @@
 
 ###*
   @ngdoc service
-  @name cron.ng.CronScheduler
-  @service CronScheduler
+  @name angular-advanced-poller.PollerScheduler
+  @service PollerScheduler
   @description
-    The CronScheduler is a promise based scheduleer.
+    The PollerScheduler is a promise based scheduleer.
     It allows you to schedule jobs for regular periodic runs based upon a schedule.  It has a few main features.
     * Has a configurable concurrency so that only so many jobs may run at the same time.  Jobs are scheduled based upon
       priority.
@@ -14,7 +14,7 @@
     * Pre-empting.  You may tell the scheduler to run a job immediately by name.
     * Simple configuration of jobs.
 ###
-angular.module('cron.ng').service 'CronScheduler', (CronJob, $timeout, $rootScope, $q) ->
+angular.module('angular-advanced-poller').service 'PollerScheduler', (PollerJob, $timeout, $rootScope, $q) ->
   jobs = []
   executingJobs = []
   executionPromise = null
@@ -22,7 +22,7 @@ angular.module('cron.ng').service 'CronScheduler', (CronJob, $timeout, $rootScop
   minWaitTime = 100
 
   jobFromDefinition = (definition) ->
-    job = new CronJob
+    job = new PollerJob
     throw "A job of name #{definition.name} is already registered" if hasJob(definition.name)
     _.defaults(job, definition)
     job.initialize()
@@ -35,30 +35,30 @@ angular.module('cron.ng').service 'CronScheduler', (CronJob, $timeout, $rootScop
       executeNextJobsOnQueue()
 
   announceJobFinished = (job) ->
-    $rootScope.$broadcast("cron.ng.job.#{job.name}.finish")
+    $rootScope.$broadcast("poller.job.#{job.name}.finish")
 
   announceJobStarted = (job) ->
-    $rootScope.$broadcast("cron.ng.job.#{job.name}.start")
+    $rootScope.$broadcast("poller.job.#{job.name}.start")
 
   announceJobCompletion = (job) ->
     (args...) ->
-      $rootScope.$broadcast("cron.ng.job.#{job.name}.success", args...)
+      $rootScope.$broadcast("poller.job.#{job.name}.success", args...)
 
   announceJobFailure = (job) ->
     (args...) ->
-      $rootScope.$broadcast("cron.ng.job.#{job.name}.failure", args...)
+      $rootScope.$broadcast("poller.job.#{job.name}.failure", args...)
 
   onJobSuccess = (scope, job, callback) ->
-    scope.$on("cron.ng.job.#{job.name}.success", callback)
+    scope.$on("poller.job.#{job.name}.success", callback)
 
   onJobFailure = (scope, job, callback) ->
-    scope.$on("cron.ng.job.#{job.name}.failure", callback)
+    scope.$on("poller.job.#{job.name}.failure", callback)
 
   onJobStarted = (scope, job, callback) ->
-    scope.$on("cron.ng.job.#{job.name}.start", callback)
+    scope.$on("poller.job.#{job.name}.start", callback)
 
   onJobFinished = (scope, job, callback) ->
-    scope.$on("cron.ng.job.#{job.name}.finish", callback)
+    scope.$on("poller.job.#{job.name}.finish", callback)
 
   closestJobTime = ->
     now = moment()
@@ -106,12 +106,12 @@ angular.module('cron.ng').service 'CronScheduler', (CronJob, $timeout, $rootScop
 
   ###
     @ngdoc method
-    @name CronScheduler.addJob
+    @name PollerScheduler.addJob
     @function
 
     @description Add a job to this scheduler.  Must be done before calling 'start'
     @example
-      CronScheduler.addJob({
+      PollerScheduler.addJob({
         name: "Job1",
         priority: 2,
         run: ( -> true),
@@ -122,15 +122,15 @@ angular.module('cron.ng').service 'CronScheduler', (CronJob, $timeout, $rootScop
   ###
   @addJob = (jobDefinition) ->
     if executionPromise
-      throw "The cron scheduler is running.  Stop it before adding jobs."
-    cronJob = jobFromDefinition(jobDefinition)
-    cronJob.validate()
-    jobs.push cronJob
+      throw "The scheduler is running.  Stop it before adding jobs."
+    job = jobFromDefinition(jobDefinition)
+    job.validate()
+    jobs.push job
     return
 
   ###
     @ngdoc method
-    @name CronScheduler.onNextRunOf
+    @name PollerScheduler.onNextRunOf
     @function
 
     @description Returns a promise which is fulfilled when the next run of
@@ -151,7 +151,7 @@ angular.module('cron.ng').service 'CronScheduler', (CronJob, $timeout, $rootScop
 
   ###
     @ngdoc method
-    @name CronScheduler.whenStarted
+    @name PollerScheduler.whenStarted
     @function
 
     @description Calls the callback each time the job starts.
@@ -162,7 +162,7 @@ angular.module('cron.ng').service 'CronScheduler', (CronJob, $timeout, $rootScop
 
   ###
     @ngdoc method
-    @name CronScheduler.whenSucceeded
+    @name PollerScheduler.whenSucceeded
     @function
 
     @description Calls the callback each time the job is successful.
@@ -173,7 +173,7 @@ angular.module('cron.ng').service 'CronScheduler', (CronJob, $timeout, $rootScop
 
   ###
     @ngdoc method
-    @name CronScheduler.whenFailed
+    @name PollerScheduler.whenFailed
     @function
 
     @description Calls the callback each time the job fails.
@@ -184,7 +184,7 @@ angular.module('cron.ng').service 'CronScheduler', (CronJob, $timeout, $rootScop
 
   ###
     @ngdoc method
-    @name CronScheduler.whenFinished
+    @name PollerScheduler.whenFinished
     @function
 
     @description Calls the callback each time the job finishes.
@@ -195,7 +195,7 @@ angular.module('cron.ng').service 'CronScheduler', (CronJob, $timeout, $rootScop
 
   ###
     @ngdoc method
-    @name CronScheduler.runNow
+    @name PollerScheduler.runNow
     @function
 
     @description Schedule the named job to run immediately.  Running of the job is still
@@ -210,34 +210,34 @@ angular.module('cron.ng').service 'CronScheduler', (CronJob, $timeout, $rootScop
 
   ###
     @ngdoc method
-    @name CronScheduler.start
+    @name PollerScheduler.start
     @function
 
-    @description Start the cron scheduler.  Waiting jobs will run immediately.
+    @description Start the scheduler.  Waiting jobs will run immediately.
   ###
   @start = ->
-    console.debug("Cron.Ng starting")
+    console.debug("AdvancedPoller starting")
     organizeJobs()
     executeJobs()
-    console.debug("Cron.Ng started")
+    console.debug("AdvancedPoller started")
     return
 
   ###
     @ngdoc method
-    @name CronScheduler.stop
+    @name PollerScheduler.stop
     @function
 
-    @description Stop the cron scheduler.  Jobs which can be stopped will be stopped immediately.
+    @description Stop the scheduler.  Jobs which can be stopped will be stopped immediately.
   ###
   @stop = ->
-    console.debug("Cron.Ng stopping.")
+    console.debug("AdvancedPoller stopping.")
     stopAllJobs()
     $timeout.cancel(executionPromise) if executionPromise
     executionPromise = null
     unless $rootScope.$$phase
       $rootScope.$digest() #Force a digest to clear the timeouts before returning.
     executingJobs = []
-    console.debug("Cron.Ng stopped.")
+    console.debug("AdvancedPoller stopped.")
     return
 
   ###

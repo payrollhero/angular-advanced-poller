@@ -1,13 +1,13 @@
 'use strict'
 
-describe "CronJob", ->
+describe "PollerJob", ->
   dateTime = "2010-01-01 10:00:00"
   initializeModule()
   subject = {}
   params = {}
 
-  before inject (CronJob, _$timeout_) ->
-    subject = CronJob
+  before inject (PollerJob) ->
+    subject = PollerJob
     @sinon = sinon.sandbox.create()
     @sinon.useFakeTimers(moment(dateTime).unix() * 1000)
     params =
@@ -30,7 +30,7 @@ describe "CronJob", ->
 
   setLocalStorageTime = (timeString) ->
     time = moment(timeString)
-    localStorage.setItem("ls.cron.job.nextRun.#{params.name}", time.toISOString())
+    localStorage.setItem("ls.poller.job.nextRun.#{params.name}", time.toISOString())
     time
 
   describe "#validate", ->
@@ -86,7 +86,7 @@ describe "CronJob", ->
     describe 'saveNextRun', ->
       it 'saves a value to local storage the interval from now', ->
         make().saveNextRun()
-        expect(localStorage.getItem("ls.cron.job.nextRun.#{params.name}"))
+        expect(localStorage.getItem("ls.poller.job.nextRun.#{params.name}"))
         .toEqual(moment().add(seconds: 30).toISOString())
 
     describe "#getNextInterval", ->
