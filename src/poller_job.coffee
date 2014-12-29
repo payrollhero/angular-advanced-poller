@@ -58,5 +58,5 @@ angular.module('angular-advanced-poller').factory 'PollerJob', (localStorageServ
 
     _endPreviousRunner: ->
       if @runner && @runner.running
-        console.debug("Runner for job #{job.name} is still running.")
+        console.debug("Runner for job #{@name} is still running.")
         @runner.stop()
