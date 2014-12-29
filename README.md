@@ -11,7 +11,7 @@ Promise based stateful angular scheduler.  Cron.Ng.
 Call the following command on your command line:
 
 ```sh
-bower install --save angular-indexed-db
+bower install --save angular-advanced-poller
 ```
 
 ### Manual

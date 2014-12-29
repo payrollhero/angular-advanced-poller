@@ -60,6 +60,7 @@ describe "CronScheduler", ->
   afterEach ->
     subject.stop()
     $timeout.verifyNoPendingTasks()
+    subject.clearJobs()
     sandbox.restore()
     localStorage.clear()
 

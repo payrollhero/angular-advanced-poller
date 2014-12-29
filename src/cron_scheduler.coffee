@@ -23,6 +23,7 @@ angular.module('cron.ng').service 'CronScheduler', (CronJob, $timeout, $rootScop
 
   jobFromDefinition = (definition) ->
     job = new CronJob
+    throw "A job of name #{definition.name} is already registered" if hasJob(definition.name)
     _.defaults(job, definition)
     job.initialize()
     job
@@ -93,6 +94,9 @@ angular.module('cron.ng').service 'CronScheduler', (CronJob, $timeout, $rootScop
 
   stopAllJobs = ->
     _(executingJobs).invoke('cancel')
+
+  hasJob = (name) ->
+    _(jobs).findWhere(name: name)?
 
   findJob = (name) ->
     job = _(jobs).findWhere(name: name)
@@ -232,6 +236,7 @@ angular.module('cron.ng').service 'CronScheduler', (CronJob, $timeout, $rootScop
     executionPromise = null
     unless $rootScope.$$phase
       $rootScope.$digest() #Force a digest to clear the timeouts before returning.
+    executingJobs = []
     console.debug("Cron.Ng stopped.")
     return
 
@@ -244,6 +249,11 @@ angular.module('cron.ng').service 'CronScheduler', (CronJob, $timeout, $rootScop
   ###
   @setConcurrency = (concurrency) ->
     maximumConcurrency = concurrency
+    return
+
+  @clearJobs = ->
+    throw "Must be stopped to clear jobs" if executionPromise?
+    jobs = []
     return
 
   return
