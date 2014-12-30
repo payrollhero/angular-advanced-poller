@@ -107,7 +107,7 @@ angular.module('angular-advanced-poller').factory('PollerJob', function(localSto
 
     PollerJob.prototype._endPreviousRunner = function() {
       if (this.runner && this.runner.running) {
-        console.debug("Runner for job " + job.name + " is still running.");
+        console.debug("Runner for job " + this.name + " is still running.");
         return this.runner.stop();
       }
     };
