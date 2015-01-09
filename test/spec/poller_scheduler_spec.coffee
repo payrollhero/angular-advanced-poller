@@ -102,7 +102,7 @@ describe "PollerScheduler", ->
         job1.promise.resolve("Done")
         job2.promise.resolve("Done")
         $rootScope.$digest()
-        sandbox.clock.now = (moment('2010-01-01 10:00:40').unix() * 1000)
+        sandbox.clock.now = (moment('2010-01-01T18:00:40.000Z').unix() * 1000)
         $timeout.flush()
         expect( job1.spy ).toHaveBeenCalledTwice()
         expect( job2.spy ).toHaveBeenCalledTwice()
