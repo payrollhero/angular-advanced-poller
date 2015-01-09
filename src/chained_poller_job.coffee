@@ -24,6 +24,9 @@ angular.module('angular-advanced-poller').factory 'ChainedPollerJob', (localStor
       @_saveRuntime()
       this
 
+    getTimeout: ->
+      @timeout
+
     _saveRuntime: ->
       localStorageService.set("poller.job.nextRun.#{@name}", @nextRun.toISOString())
 
