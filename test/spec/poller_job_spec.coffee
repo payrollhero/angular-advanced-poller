@@ -83,26 +83,42 @@ describe "PollerJob", ->
         params.run = ->
           deferred.promise
         inst = make()
-        inst.execute()
         expect(getLocalStorageTime()).toBeNull()
+        inst.execute()
+        expect(getLocalStorageTime()).toEqual('2010-01-01T18:00:20.000Z')
         expect(inst.isOverdue()).toBeFalsy()
         deferred.resolve("Success")
         $rootScope.$digest()
         expect(getLocalStorageTime())
         .toEqual(moment().add(seconds: 30).toISOString())
 
-      it 'does not set next run when the job fails', ->
+      it 'sets the jobs next run to be the timeout when it fails', ->
         deferred = $q.defer()
         params.run = ->
           deferred.promise
         inst = make()
-        inst.execute()
         expect(getLocalStorageTime()).toBeNull()
+        inst.execute()
+        expect(getLocalStorageTime()).toEqual('2010-01-01T18:00:20.000Z')
         expect(inst.isOverdue()).toBeFalsy()
         deferred.reject('failed')
         $rootScope.$digest()
-        expect(getLocalStorageTime()).toBeNull()
-        expect(inst.isOverdue()).toBeTruthy()
+        expect(getLocalStorageTime()).toEqual('2010-01-01T18:00:20.000Z')
+        expect(inst.isOverdue()).toBeFalsy()
+
+      it 'only retries the job 5 times then sets it to the standard timeout', ->
+        params.timeout = moment.duration(seconds: 5)
+        params.run = ->
+          inst.deferred = $q.defer()
+          inst.deferred.promise
+        inst = make()
+        _.times 4, (n) ->
+          inst.execute()
+          inst.deferred.reject('failed')
+          expect(getLocalStorageTime()).toEqual('2010-01-01T18:00:05.000Z')
+        expect(getLocalStorageTime()).toEqual('2010-01-01T18:00:05.000Z')
+        inst.execute()
+        expect(getLocalStorageTime()).toEqual('2010-01-01T18:00:30.000Z')
 
     describe 'getTimeout', ->
       it 'returns 20 seconds', ->
@@ -117,9 +133,9 @@ describe "PollerJob", ->
         params.interval = moment.duration(seconds: 20)
         expect(make().getTimeout().asSeconds()).toEqual(20)
 
-    describe 'saveNextRun', ->
+    describe 'saveNextIncrementalRun', ->
       it 'saves a value to local storage the interval from now', ->
-        make().saveNextRun()
+        make().saveNextIncrementalRun()
         expect(getLocalStorageTime())
         .toEqual(moment().add(seconds: 30).toISOString())
 

@@ -213,7 +213,7 @@ describe "PollerScheduler", ->
       job1.promise.resolve('Done')
       $rootScope.$digest()
       expect(chainedJob.spy).toHaveBeenCalledOnce()
-      expect(localStorage.getItem("ls.poller.job.nextRun.ChainJob")).toEqual(moment().toISOString())
+      expect(localStorage.getItem("ls.poller.job.nextRun.ChainJob")).toEqual('2010-01-01T18:00:25.000Z')
       chainedJob.promise.resolve('Done')
       $rootScope.$digest()
       expect(localStorage.getItem("ls.poller.job.nextRun.ChainJob")).toBeNull()

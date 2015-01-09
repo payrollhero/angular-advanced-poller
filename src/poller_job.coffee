@@ -1,6 +1,6 @@
 'use strict'
 
-angular.module('angular-advanced-poller').factory 'PollerJob', (localStorageService, PollerJobRunner) ->
+angular.module('angular-advanced-poller').factory 'PollerJob', (localStorageService, PollerJobRunner, $q) ->
   class PollerJob
 
     validate: ->
@@ -37,10 +37,14 @@ angular.module('angular-advanced-poller').factory 'PollerJob', (localStorageServ
       _.min [@interval, moment.duration(seconds:30)], (duration) ->
         duration.asMilliseconds()
 
-    saveNextRun: ->
+    saveNextIncrementalRun: ->
       @nextRun = moment().add(@getNextInterval())
       @_saveRuntime()
       this
+
+    cancelNextRun: ->
+      @nextRun = undefined
+      localStorageService.remove("poller.job.nextRun.#{@name}")
 
     _saveRuntime: ->
       localStorageService.set("poller.job.nextRun.#{@name}", @nextRun.toISOString())
@@ -53,12 +57,32 @@ angular.module('angular-advanced-poller').factory 'PollerJob', (localStorageServ
     execute: ->
       @_endPreviousRunner()
       @runner = new PollerJobRunner(this)
+      @_setToRetryInTimeout()
       @runner.run().then (items) =>
-        @saveNextRun()
+        @retries = 0
+        @saveNextIncrementalRun()
         return items
       .finally =>
         @runner = null
         return
+
+    maxRetries: ->
+      @retry || 5
+
+    _setToRetryInTimeout: ->
+      @retries ||= 0
+      @retries++
+      if @retries < @maxRetries()
+        if @retries > 1
+          console.debug("Job #{name} has been retried #{@retries} times.")
+        @nextRun = moment().add(milliseconds: @getTimeout().asMilliseconds())
+        @_saveRuntime()
+      else
+        console.debug("Job #{name} has been retried more than #{@maxRetries()} times.")
+        @saveNextIncrementalRun()
+        @retries = 0
+        #we've reached the maximum retries.
+
 
     _endPreviousRunner: ->
       if @runner && @runner.running

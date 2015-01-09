@@ -1,7 +1,7 @@
 'use strict'
 
-angular.module('angular-advanced-poller').factory 'ChainedPollerJob', (localStorageService, PollerJobRunner) ->
-  class ChainedPollerJob
+angular.module('angular-advanced-poller').factory 'ChainedPollerJob', (localStorageService, PollerJobRunner, PollerJob) ->
+  class ChainedPollerJob extends PollerJob
 
     validate: ->
       throw "Job must have a name" unless @name
@@ -19,33 +19,21 @@ angular.module('angular-advanced-poller').factory 'ChainedPollerJob', (localStor
       @nextRun = moment(storedTime) if storedTime
       this
 
-    makeOverdue: ->
-      @nextRun = moment()
-      @_saveRuntime()
-      this
-
     getTimeout: ->
       @timeout
 
-    _saveRuntime: ->
-      localStorageService.set("poller.job.nextRun.#{@name}", @nextRun.toISOString())
-
-    cancel: ->
-      @runner.stop() if @runner?
-      @runner = null
-      @stop() if @stop?
+    saveNextIncrementalRun: ->
+      # we always wait until we are called via chain.
+      @cancelNextRun()
 
     execute: ->
       @_endPreviousRunner()
       @runner = new PollerJobRunner(this)
+      @_setToRetryInTimeout()
       @runner.run().then (items) =>
-        localStorageService.remove("poller.job.nextRun.#{@name}")
+        @retries = 0
+        @cancelNextRun()
         items
       .finally =>
         @runner = null
         return
-
-    _endPreviousRunner: ->
-      if @runner && @runner.running
-        console.debug("Runner for job #{@name} is still running.")
-        @runner.stop()
