@@ -1,7 +1,7 @@
 'use strict'
 
 describe "PollerJob", ->
-  dateTime = "2010-01-01 10:00:00"
+  dateTime = "2010-01-01T18:00:00.000Z"
   initializeModule()
   subject = {}
   params = {}
