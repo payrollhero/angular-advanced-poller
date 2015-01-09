@@ -12,6 +12,92 @@ dependencies = ['LocalStorageModule'];
 angular.module('angular-advanced-poller', dependencies);
 
 'use strict';
+angular.module('angular-advanced-poller').factory('ChainedPollerJob', function(localStorageService, PollerJobRunner) {
+  var ChainedPollerJob;
+  return ChainedPollerJob = (function() {
+    function ChainedPollerJob() {}
+
+    ChainedPollerJob.prototype.validate = function() {
+      if (!this.name) {
+        throw "Job must have a name";
+      }
+      if (!this.priority) {
+        throw "Job must have an integer priority";
+      }
+      if (!_.isFunction(this.run)) {
+        throw "You must use 'run' to specify what to do";
+      }
+      if (this.stop && !_.isFunction(this.stop)) {
+        throw "You must provide a function to 'stop'";
+      }
+      if (!this.chainTo) {
+        throw "You must tell what job to run this after using 'chainTo'";
+      }
+      if (!moment.isDuration(this.timeout)) {
+        throw "Timeout must be a moment duration";
+      }
+    };
+
+    ChainedPollerJob.prototype.isOverdue = function() {
+      return !this.runner && this.nextRun && (moment().isAfter(this.nextRun) || moment().isSame(this.nextRun));
+    };
+
+    ChainedPollerJob.prototype.initialize = function() {
+      var storedTime;
+      storedTime = localStorageService.get("poller.job.nextRun." + this.name);
+      if (storedTime) {
+        this.nextRun = moment(storedTime);
+      }
+      return this;
+    };
+
+    ChainedPollerJob.prototype.makeOverdue = function() {
+      this.nextRun = moment();
+      this._saveRuntime();
+      return this;
+    };
+
+    ChainedPollerJob.prototype._saveRuntime = function() {
+      return localStorageService.set("poller.job.nextRun." + this.name, this.nextRun.toISOString());
+    };
+
+    ChainedPollerJob.prototype.cancel = function() {
+      if (this.runner != null) {
+        this.runner.stop();
+      }
+      this.runner = null;
+      if (this.stop != null) {
+        return this.stop();
+      }
+    };
+
+    ChainedPollerJob.prototype.execute = function() {
+      this._endPreviousRunner();
+      this.runner = new PollerJobRunner(this);
+      return this.runner.run().then((function(_this) {
+        return function(items) {
+          return localStorageService.remove("poller.job.nextRun." + _this.name);
+        };
+      })(this))["finally"]((function(_this) {
+        return function() {
+          _this.runner = null;
+        };
+      })(this));
+    };
+
+    ChainedPollerJob.prototype._endPreviousRunner = function() {
+      if (this.runner && this.runner.running) {
+        console.debug("Runner for job " + this.name + " is still running.");
+        return this.runner.stop();
+      }
+    };
+
+    return ChainedPollerJob;
+
+  })();
+});
+
+'use strict';
 angular.module('angular-advanced-poller').factory('PollerJob', function(localStorageService, PollerJobRunner) {
   var PollerJob;
   return PollerJob = (function() {
@@ -55,7 +141,7 @@ angular.module('angular-advanced-poller').factory('PollerJob', function(localSto
     };
 
     PollerJob.prototype.isOverdue = function() {
-      return moment().isAfter(this.nextRun) || moment().isSame(this.nextRun);
+      return !this.runner && (moment().isAfter(this.nextRun) || moment().isSame(this.nextRun));
     };
 
     PollerJob.prototype.makeOverdue = function() {
@@ -100,9 +186,17 @@ angular.module('angular-advanced-poller').factory('PollerJob', function(localSto
 
     PollerJob.prototype.execute = function() {
       this._endPreviousRunner();
-      this.saveNextRun();
       this.runner = new PollerJobRunner(this);
-      return this.runner.run();
+      return this.runner.run().then((function(_this) {
+        return function(items) {
+          _this.saveNextRun();
+          return items;
+        };
+      })(this))["finally"]((function(_this) {
+        return function() {
+          _this.runner = null;
+        };
+      })(this));
     };
 
     PollerJob.prototype._endPreviousRunner = function() {
@@ -218,21 +312,24 @@ angular.module('angular-advanced-poller').factory('PollerJobRunner', function($q
  */
 var __slice = [].slice;
 
-angular.module('angular-advanced-poller').service('PollerScheduler', function(PollerJob, $timeout, $rootScope, $q) {
-  var announceJobCompletion, announceJobFailure, announceJobFinished, announceJobStarted, calculateTimeToNextJob, closestJobTime, executeJobs, executeNextJobsOnQueue, executingJobs, executionPromise, findJob, finishJobAndRunNextJobOnQueue, hasJob, jobFromDefinition, jobs, maximumConcurrency, minWaitTime, onJobFailure, onJobFinished, onJobStarted, onJobSuccess, organizeJobs, stopAllJobs;
+angular.module('angular-advanced-poller').service('PollerScheduler', function(PollerJob, ChainedPollerJob, $timeout, $rootScope, $q) {
+  var addJobFromDefinition, announceJobCompletion, announceJobFailure, announceJobFinished, announceJobStarted, calculateTimeToNextJob, closestJobTime, executeJobs, executeNextJobsOnQueue, executingJobs, executionPromise, findJob, finishJobAndRunNextJobOnQueue, hasJob, jobs, maximumConcurrency, minWaitTime, onJobFailure, onJobFinished, onJobStarted, onJobSuccess, organizeJobs, stopAllJobs;
   jobs = [];
   executingJobs = [];
   executionPromise = null;
   maximumConcurrency = 4;
   minWaitTime = 100;
-  jobFromDefinition = function(definition) {
+  addJobFromDefinition = function(definition, defClass) {
     var job;
-    job = new PollerJob;
     if (hasJob(definition.name)) {
       throw "A job of name " + definition.name + " is already registered";
     }
+    job = new defClass;
     _.defaults(job, definition);
     job.initialize();
+    job.validate();
+    jobs.push(job);
+    organizeJobs();
     return job;
   };
   finishJobAndRunNextJobOnQueue = function(job) {
@@ -355,13 +452,33 @@ angular.module('angular-advanced-poller').service('PollerScheduler', function(Po
       })
    */
   this.addJob = function(jobDefinition) {
+    addJobFromDefinition(jobDefinition, PollerJob);
+  };
+
+  /*
+    @ngdoc method
+    @name PollerScheduler.chainJob
+    @function
+  
+    @description Add a new job to the scheduler, chained to the success of another job.
+                 This job will execute when the other job completes successfully.
+    @example
+      PollerScheduler.chainJob({
+        name: "Job2",
+        priority: 2,
+        run: ( -> true),
+        timeout: moment.duration(seconds: 20)
+        chainTo: 'Job1'
+      })
+   */
+  this.chainJob = function(jobDefinition) {
     var job;
-    if (executionPromise) {
-      throw "The scheduler is running.  Stop it before adding jobs.";
-    }
-    job = jobFromDefinition(jobDefinition);
-    job.validate();
-    jobs.push(job);
+    job = addJobFromDefinition(jobDefinition, ChainedPollerJob);
+    job.scope = $rootScope.$new();
+    return this.whenSucceeded(job.chainTo, job.scope, function() {
+      console.debug("Chained job " + job.name + " will now execute");
+      return job.makeOverdue();
+    });
   };
 
   /*

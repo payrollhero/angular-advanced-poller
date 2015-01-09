@@ -5,11 +5,15 @@ describe "PollerJob", ->
   initializeModule()
   subject = {}
   params = {}
+  $q = {}
+  $rootScope = {}
 
-  before inject (PollerJob) ->
+  before inject (PollerJob, _$q_, _$rootScope_) ->
     subject = PollerJob
     @sinon = sinon.sandbox.create()
     @sinon.useFakeTimers(moment(dateTime).unix() * 1000)
+    $q = _$q_
+    $rootScope = _$rootScope_
     params =
       name: "Foobar",
       priority: 1,
@@ -32,6 +36,9 @@ describe "PollerJob", ->
     time = moment(timeString)
     localStorage.setItem("ls.poller.job.nextRun.#{params.name}", time.toISOString())
     time
+
+  getLocalStorageTime = ->
+    localStorage.getItem("ls.poller.job.nextRun.#{params.name}")
 
   describe "#validate", ->
     it "throws nothing when valid", ->
@@ -70,6 +77,33 @@ describe "PollerJob", ->
         inst.makeOverdue()
         expect(inst.isOverdue()).toBeTruthy()
 
+    describe 'execute', ->
+      it 'sets the next run when the job completes successfully', ->
+        deferred = $q.defer()
+        params.run = ->
+          deferred.promise
+        inst = make()
+        inst.execute()
+        expect(getLocalStorageTime()).toBeNull()
+        expect(inst.isOverdue()).toBeFalsy()
+        deferred.resolve("Success")
+        $rootScope.$digest()
+        expect(getLocalStorageTime())
+        .toEqual(moment().add(seconds: 30).toISOString())
+
+      it 'does not set next run when the job fails', ->
+        deferred = $q.defer()
+        params.run = ->
+          deferred.promise
+        inst = make()
+        inst.execute()
+        expect(getLocalStorageTime()).toBeNull()
+        expect(inst.isOverdue()).toBeFalsy()
+        deferred.reject('failed')
+        $rootScope.$digest()
+        expect(getLocalStorageTime()).toBeNull()
+        expect(inst.isOverdue()).toBeTruthy()
+
     describe 'getTimeout', ->
       it 'returns 20 seconds', ->
         expect(make().getTimeout().asSeconds()).toEqual(20)
@@ -86,7 +120,7 @@ describe "PollerJob", ->
     describe 'saveNextRun', ->
       it 'saves a value to local storage the interval from now', ->
         make().saveNextRun()
-        expect(localStorage.getItem("ls.poller.job.nextRun.#{params.name}"))
+        expect(getLocalStorageTime())
         .toEqual(moment().add(seconds: 30).toISOString())
 
     describe "#getNextInterval", ->

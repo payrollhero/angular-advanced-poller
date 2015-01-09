@@ -16,6 +16,8 @@ describe "PollerScheduler", ->
     interval: moment.duration(seconds: 30),
     timeout: moment.duration(seconds: 20)
 
+  chainedJob = {}
+
   job2 =
     name: "Job2",
     priority: 3,
@@ -68,6 +70,9 @@ describe "PollerScheduler", ->
     for jobDefinition in jobs
       subject.addJob(jobDefinition)
 
+  configureChainedJob = ->
+    subject.chainJob(chainedJob)
+
   startJobs = ->
     configure()
     subject.start()
@@ -102,6 +107,7 @@ describe "PollerScheduler", ->
         expect( job1.spy ).toHaveBeenCalledTwice()
         expect( job2.spy ).toHaveBeenCalledTwice()
         $rootScope.$digest()
+        subject.stop()
         $timeout.flush()
 
       it "notifies about start, success, failure, finally", ->
@@ -186,6 +192,41 @@ describe "PollerScheduler", ->
       expect(job3.spy).toHaveBeenCalledOnce()
       subject.stop()
       $timeout.flush()
+
+  describe "chaining jobs", ->
+    before ->
+      chainedJob = {
+        name: "ChainJob"
+        priority: 2
+        timeout: moment.duration(seconds: 25)
+        chainTo: 'Job1'
+      }
+      spyOnJob(chainedJob)
+      spyOnJob(job1)
+      subject.addJob(job1)
+      subject.chainJob(chainedJob)
+      subject.start()
+
+    it "calls the chained job when the first job completes successfully", ->
+      expect(job1.spy).toHaveBeenCalledOnce()
+      expect(chainedJob.spy).not.toHaveBeenCalledOnce()
+      job1.promise.resolve('Done')
+      $rootScope.$digest()
+      expect(chainedJob.spy).toHaveBeenCalledOnce()
+      expect(localStorage.getItem("ls.poller.job.nextRun.ChainJob")).toEqual(moment().toISOString())
+      chainedJob.promise.resolve('Done')
+      $rootScope.$digest()
+      expect(localStorage.getItem("ls.poller.job.nextRun.ChainJob")).toBeNull()
+      subject.stop()
+      $timeout.flush()
+
+    it "does not call the chained job if the first job does not complete successfully", ->
+      job1.promise.reject('not done')
+      $rootScope.$digest()
+      expect(chainedJob.spy).not.toHaveBeenCalledOnce()
+      subject.stop()
+      $timeout.flush()
+
 
   describe '#setConcurrency', ->
     before ->

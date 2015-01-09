@@ -23,7 +23,7 @@ angular.module('angular-advanced-poller').factory 'PollerJob', (localStorageServ
       this
 
     isOverdue: ->
-      moment().isAfter(@nextRun) || moment().isSame(@nextRun)
+      !@runner && ( moment().isAfter(@nextRun) || moment().isSame(@nextRun) )
 
     makeOverdue: ->
       @nextRun = moment()
@@ -52,9 +52,13 @@ angular.module('angular-advanced-poller').factory 'PollerJob', (localStorageServ
 
     execute: ->
       @_endPreviousRunner()
-      @saveNextRun()
       @runner = new PollerJobRunner(this)
-      @runner.run()
+      @runner.run().then (items) =>
+        @saveNextRun()
+        return items
+      .finally =>
+        @runner = null
+        return
 
     _endPreviousRunner: ->
       if @runner && @runner.running
