@@ -57,6 +57,10 @@ angular.module('angular-advanced-poller').factory('ChainedPollerJob', function(l
       return this;
     };
 
+    ChainedPollerJob.prototype.getTimeout = function() {
+      return this.timeout;
+    };
+
     ChainedPollerJob.prototype._saveRuntime = function() {
       return localStorageService.set("poller.job.nextRun." + this.name, this.nextRun.toISOString());
     };
