@@ -40,6 +40,7 @@ angular.module('angular-advanced-poller').factory 'ChainedPollerJob', (localStor
       @runner = new PollerJobRunner(this)
       @runner.run().then (items) =>
         localStorageService.remove("poller.job.nextRun.#{@name}")
+        items
       .finally =>
         @runner = null
         return

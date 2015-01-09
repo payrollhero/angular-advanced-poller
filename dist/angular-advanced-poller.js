@@ -80,7 +80,8 @@ angular.module('angular-advanced-poller').factory('ChainedPollerJob', function(l
       this.runner = new PollerJobRunner(this);
       return this.runner.run().then((function(_this) {
         return function(items) {
-          return localStorageService.remove("poller.job.nextRun." + _this.name);
+          localStorageService.remove("poller.job.nextRun." + _this.name);
+          return items;
         };
       })(this))["finally"]((function(_this) {
         return function() {
