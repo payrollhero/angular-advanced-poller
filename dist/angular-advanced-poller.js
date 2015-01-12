@@ -89,12 +89,19 @@ angular.module('angular-advanced-poller').factory('ChainedPollerJob', function(l
 });
 
 'use strict';
-angular.module('angular-advanced-poller').factory('PollerJob', function(localStorageService, PollerJobRunner, $q) {
-  var PollerJob;
-  return PollerJob = (function() {
-    function PollerJob() {}
+var __hasProp = {}.hasOwnProperty,
+  __extends = function(child, parent) { for (var key in parent) { if (__hasProp.call(parent, key)) child[key] = parent[key]; } function ctor() { this.constructor = child; } ctor.prototype = parent.prototype; child.prototype = new ctor(); child.__super__ = parent.prototype; return child; };
 
-    PollerJob.prototype.validate = function() {
+angular.module('angular-advanced-poller').factory('IntervalPollerJob', function(localStorageService, PollerJobRunner, PollerJob) {
+  var IntervalPollerJob;
+  return IntervalPollerJob = (function(_super) {
+    __extends(IntervalPollerJob, _super);
+
+    function IntervalPollerJob() {
+      return IntervalPollerJob.__super__.constructor.apply(this, arguments);
+    }
+
+    IntervalPollerJob.prototype.validate = function() {
       if (!this.name) {
         throw "Job must have a name";
       }
@@ -118,34 +125,11 @@ angular.module('angular-advanced-poller').factory('PollerJob', function(localSto
       }
     };
 
-    PollerJob.prototype.getNextInterval = function() {
-      if (this.randomOffset != null) {
-        return this.interval.asMilliseconds() + Math.ceil(Math.random() * this.randomOffset.asMilliseconds());
-      } else {
-        return this.interval.asMilliseconds();
-      }
-    };
-
-    PollerJob.prototype.initialize = function() {
-      this.nextRun = moment(localStorageService.get("poller.job.nextRun." + this.name) || new Date());
-      return this;
-    };
-
-    PollerJob.prototype.isOverdue = function() {
-      return !this.runner && (moment().isAfter(this.nextRun) || moment().isSame(this.nextRun));
-    };
-
-    PollerJob.prototype.makeOverdue = function() {
-      this.nextRun = moment();
-      this._saveRuntime();
-      return this;
-    };
-
-    PollerJob.prototype.getTimeout = function() {
+    IntervalPollerJob.prototype.getTimeout = function() {
       return this.timeout || this._intervalOr30Seconds();
     };
 
-    PollerJob.prototype._intervalOr30Seconds = function() {
+    IntervalPollerJob.prototype._intervalOr30Seconds = function() {
       return _.min([
         this.interval, moment.duration({
           seconds: 30
@@ -153,6 +137,57 @@ angular.module('angular-advanced-poller').factory('PollerJob', function(localSto
       ], function(duration) {
         return duration.asMilliseconds();
       });
+    };
+
+    IntervalPollerJob.prototype.getNextInterval = function() {
+      if (this.randomOffset != null) {
+        return this.interval.asMilliseconds() + Math.ceil(Math.random() * this.randomOffset.asMilliseconds());
+      } else {
+        return this.interval.asMilliseconds();
+      }
+    };
+
+    IntervalPollerJob.prototype.initialize = function() {
+      this.nextRun = moment(localStorageService.get("poller.job.nextRun." + this.name) || new Date());
+      return this;
+    };
+
+    IntervalPollerJob.prototype.isOverdue = function() {
+      return !this.runner && (moment().isAfter(this.nextRun) || moment().isSame(this.nextRun));
+    };
+
+    IntervalPollerJob.prototype.execute = function() {
+      this._endPreviousRunner();
+      this.runner = new PollerJobRunner(this);
+      this._setToRetryInTimeout();
+      return this.runner.run().then((function(_this) {
+        return function(items) {
+          _this.retries = 0;
+          _this.saveNextIncrementalRun();
+          return items;
+        };
+      })(this))["finally"]((function(_this) {
+        return function() {
+          _this.runner = null;
+        };
+      })(this));
+    };
+
+    return IntervalPollerJob;
+
+  })(PollerJob);
+});
+
+'use strict';
+angular.module('angular-advanced-poller').factory('PollerJob', function(localStorageService) {
+  var PollerJob;
+  return PollerJob = (function() {
+    function PollerJob() {}
+
+    PollerJob.prototype.makeOverdue = function() {
+      this.nextRun = moment();
+      this._saveRuntime();
+      return this;
     };
 
     PollerJob.prototype.saveNextIncrementalRun = function() {
@@ -178,23 +213,6 @@ angular.module('angular-advanced-poller').factory('PollerJob', function(localSto
       if (this.stop != null) {
         return this.stop();
       }
-    };
-
-    PollerJob.prototype.execute = function() {
-      this._endPreviousRunner();
-      this.runner = new PollerJobRunner(this);
-      this._setToRetryInTimeout();
-      return this.runner.run().then((function(_this) {
-        return function(items) {
-          _this.retries = 0;
-          _this.saveNextIncrementalRun();
-          return items;
-        };
-      })(this))["finally"]((function(_this) {
-        return function() {
-          _this.runner = null;
-        };
-      })(this));
     };
 
     PollerJob.prototype.maxRetries = function() {
@@ -332,7 +350,7 @@ angular.module('angular-advanced-poller').factory('PollerJobRunner', function($q
  */
 var __slice = [].slice;
 
-angular.module('angular-advanced-poller').service('PollerScheduler', function(PollerJob, ChainedPollerJob, $timeout, $rootScope, $q) {
+angular.module('angular-advanced-poller').service('PollerScheduler', function(IntervalPollerJob, ChainedPollerJob, $timeout, $rootScope, $q) {
   var addJobFromDefinition, announceJobCompletion, announceJobFailure, announceJobFinished, announceJobStarted, calculateTimeToNextJob, closestJobTime, executeJobs, executeNextJobsOnQueue, executingJobs, executionPromise, findJob, finishJobAndRunNextJobOnQueue, hasJob, jobs, maximumConcurrency, minWaitTime, onJobFailure, onJobFinished, onJobStarted, onJobSuccess, organizeJobs, stopAllJobs;
   jobs = [];
   executingJobs = [];
@@ -472,7 +490,7 @@ angular.module('angular-advanced-poller').service('PollerScheduler', function(Po
       })
    */
   this.addJob = function(jobDefinition) {
-    addJobFromDefinition(jobDefinition, PollerJob);
+    addJobFromDefinition(jobDefinition, IntervalPollerJob);
   };
 
   /*

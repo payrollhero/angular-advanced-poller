@@ -1,6 +1,6 @@
 'use strict'
 
-describe "PollerJob", ->
+describe "IntervalPollerJob", ->
   dateTime = "2010-01-01T18:00:00.000Z"
   initializeModule()
   subject = {}
@@ -8,8 +8,8 @@ describe "PollerJob", ->
   $q = {}
   $rootScope = {}
 
-  before inject (PollerJob, _$q_, _$rootScope_) ->
-    subject = PollerJob
+  before inject (IntervalPollerJob, _$q_, _$rootScope_) ->
+    subject = IntervalPollerJob
     @sinon = sinon.sandbox.create()
     @sinon.useFakeTimers(moment(dateTime).unix() * 1000)
     $q = _$q_

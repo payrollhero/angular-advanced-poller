@@ -14,7 +14,7 @@
     * Pre-empting.  You may tell the scheduler to run a job immediately by name.
     * Simple configuration of jobs.
 ###
-angular.module('angular-advanced-poller').service 'PollerScheduler', (PollerJob, ChainedPollerJob, $timeout, $rootScope, $q) ->
+angular.module('angular-advanced-poller').service 'PollerScheduler', (IntervalPollerJob, ChainedPollerJob, $timeout, $rootScope, $q) ->
   jobs = []
   executingJobs = []
   executionPromise = null
@@ -124,7 +124,7 @@ angular.module('angular-advanced-poller').service 'PollerScheduler', (PollerJob,
       })
   ###
   @addJob = (jobDefinition) ->
-    addJobFromDefinition(jobDefinition, PollerJob)
+    addJobFromDefinition(jobDefinition, IntervalPollerJob)
     return
 
   ###
