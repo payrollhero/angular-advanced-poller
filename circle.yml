@@ -7,4 +7,4 @@ dependencies:
     - bower install
 test:
   override:
-    - gulp test
+    - ./node_modules/.bin/gulp test

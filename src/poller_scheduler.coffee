@@ -14,18 +14,21 @@
     * Pre-empting.  You may tell the scheduler to run a job immediately by name.
     * Simple configuration of jobs.
 ###
-angular.module('angular-advanced-poller').service 'PollerScheduler', (PollerJob, $timeout, $rootScope, $q) ->
+angular.module('angular-advanced-poller').service 'PollerScheduler', (IntervalPollerJob, ChainedPollerJob, $timeout, $rootScope, $q) ->
   jobs = []
   executingJobs = []
   executionPromise = null
   maximumConcurrency = 4
   minWaitTime = 100
 
-  jobFromDefinition = (definition) ->
-    job = new PollerJob
+  addJobFromDefinition = (definition, defClass) ->
     throw "A job of name #{definition.name} is already registered" if hasJob(definition.name)
+    job = new defClass
     _.defaults(job, definition)
     job.initialize()
+    job.validate()
+    jobs.push job
+    organizeJobs()
     job
 
   finishJobAndRunNextJobOnQueue = (job) ->
@@ -121,12 +124,32 @@ angular.module('angular-advanced-poller').service 'PollerScheduler', (PollerJob,
       })
   ###
   @addJob = (jobDefinition) ->
-    if executionPromise
-      throw "The scheduler is running.  Stop it before adding jobs."
-    job = jobFromDefinition(jobDefinition)
-    job.validate()
-    jobs.push job
+    addJobFromDefinition(jobDefinition, IntervalPollerJob)
     return
+
+  ###
+    @ngdoc method
+    @name PollerScheduler.chainJob
+    @function
+
+    @description Add a new job to the scheduler, chained to the success of another job.
+                 This job will execute when the other job completes successfully.
+    @example
+      PollerScheduler.chainJob({
+        name: "Job2",
+        priority: 2,
+        run: ( -> true),
+        timeout: moment.duration(seconds: 20)
+        chainTo: 'Job1'
+      })
+  ###
+  @chainJob = (jobDefinition) ->
+    job = addJobFromDefinition(jobDefinition, ChainedPollerJob)
+    job.scope = $rootScope.$new()
+    @whenSucceeded job.chainTo, job.scope, ->
+      console.debug("Chained job #{job.name} will now execute")
+      job.makeOverdue()
+
 
   ###
     @ngdoc method

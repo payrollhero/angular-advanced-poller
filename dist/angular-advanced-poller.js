@@ -12,12 +12,96 @@ dependencies = ['LocalStorageModule'];
 angular.module('angular-advanced-poller', dependencies);
 
 'use strict';
-angular.module('angular-advanced-poller').factory('PollerJob', function(localStorageService, PollerJobRunner) {
-  var PollerJob;
-  return PollerJob = (function() {
-    function PollerJob() {}
+var __hasProp = {}.hasOwnProperty,
+  __extends = function(child, parent) { for (var key in parent) { if (__hasProp.call(parent, key)) child[key] = parent[key]; } function ctor() { this.constructor = child; } ctor.prototype = parent.prototype; child.prototype = new ctor(); child.__super__ = parent.prototype; return child; };
 
-    PollerJob.prototype.validate = function() {
+angular.module('angular-advanced-poller').factory('ChainedPollerJob', function(localStorageService, PollerJobRunner, PollerJob) {
+  var ChainedPollerJob;
+  return ChainedPollerJob = (function(_super) {
+    __extends(ChainedPollerJob, _super);
+
+    function ChainedPollerJob() {
+      return ChainedPollerJob.__super__.constructor.apply(this, arguments);
+    }
+
+    ChainedPollerJob.prototype.validate = function() {
+      if (!this.name) {
+        throw "Job must have a name";
+      }
+      if (!this.priority) {
+        throw "Job must have an integer priority";
+      }
+      if (!_.isFunction(this.run)) {
+        throw "You must use 'run' to specify what to do";
+      }
+      if (this.stop && !_.isFunction(this.stop)) {
+        throw "You must provide a function to 'stop'";
+      }
+      if (!this.chainTo) {
+        throw "You must tell what job to run this after using 'chainTo'";
+      }
+      if (!moment.isDuration(this.timeout)) {
+        throw "Timeout must be a moment duration";
+      }
+    };
+
+    ChainedPollerJob.prototype.isOverdue = function() {
+      return !this.runner && this.nextRun && (moment().isAfter(this.nextRun) || moment().isSame(this.nextRun));
+    };
+
+    ChainedPollerJob.prototype.initialize = function() {
+      var storedTime;
+      storedTime = localStorageService.get("poller.job.nextRun." + this.name);
+      if (storedTime) {
+        this.nextRun = moment(storedTime);
+      }
+      return this;
+    };
+
+    ChainedPollerJob.prototype.getTimeout = function() {
+      return this.timeout;
+    };
+
+    ChainedPollerJob.prototype.saveNextIncrementalRun = function() {
+      return this.cancelNextRun();
+    };
+
+    ChainedPollerJob.prototype.execute = function() {
+      this._endPreviousRunner();
+      this.runner = new PollerJobRunner(this);
+      this._setToRetryInTimeout();
+      return this.runner.run().then((function(_this) {
+        return function(items) {
+          _this.retries = 0;
+          _this.cancelNextRun();
+          return items;
+        };
+      })(this))["finally"]((function(_this) {
+        return function() {
+          _this.runner = null;
+        };
+      })(this));
+    };
+
+    return ChainedPollerJob;
+
+  })(PollerJob);
+});
+
+'use strict';
+var __hasProp = {}.hasOwnProperty,
+  __extends = function(child, parent) { for (var key in parent) { if (__hasProp.call(parent, key)) child[key] = parent[key]; } function ctor() { this.constructor = child; } ctor.prototype = parent.prototype; child.prototype = new ctor(); child.__super__ = parent.prototype; return child; };
+
+angular.module('angular-advanced-poller').factory('IntervalPollerJob', function(localStorageService, PollerJobRunner, PollerJob) {
+  var IntervalPollerJob;
+  return IntervalPollerJob = (function(_super) {
+    __extends(IntervalPollerJob, _super);
+
+    function IntervalPollerJob() {
+      return IntervalPollerJob.__super__.constructor.apply(this, arguments);
+    }
+
+    IntervalPollerJob.prototype.validate = function() {
       if (!this.name) {
         throw "Job must have a name";
       }
@@ -41,34 +125,11 @@ angular.module('angular-advanced-poller').factory('PollerJob', function(localSto
       }
     };
 
-    PollerJob.prototype.getNextInterval = function() {
-      if (this.randomOffset != null) {
-        return this.interval.asMilliseconds() + Math.ceil(Math.random() * this.randomOffset.asMilliseconds());
-      } else {
-        return this.interval.asMilliseconds();
-      }
-    };
-
-    PollerJob.prototype.initialize = function() {
-      this.nextRun = moment(localStorageService.get("poller.job.nextRun." + this.name) || new Date());
-      return this;
-    };
-
-    PollerJob.prototype.isOverdue = function() {
-      return moment().isAfter(this.nextRun) || moment().isSame(this.nextRun);
-    };
-
-    PollerJob.prototype.makeOverdue = function() {
-      this.nextRun = moment();
-      this._saveRuntime();
-      return this;
-    };
-
-    PollerJob.prototype.getTimeout = function() {
+    IntervalPollerJob.prototype.getTimeout = function() {
       return this.timeout || this._intervalOr30Seconds();
     };
 
-    PollerJob.prototype._intervalOr30Seconds = function() {
+    IntervalPollerJob.prototype._intervalOr30Seconds = function() {
       return _.min([
         this.interval, moment.duration({
           seconds: 30
@@ -78,10 +139,66 @@ angular.module('angular-advanced-poller').factory('PollerJob', function(localSto
       });
     };
 
-    PollerJob.prototype.saveNextRun = function() {
+    IntervalPollerJob.prototype.getNextInterval = function() {
+      if (this.randomOffset != null) {
+        return this.interval.asMilliseconds() + Math.ceil(Math.random() * this.randomOffset.asMilliseconds());
+      } else {
+        return this.interval.asMilliseconds();
+      }
+    };
+
+    IntervalPollerJob.prototype.initialize = function() {
+      this.nextRun = moment(localStorageService.get("poller.job.nextRun." + this.name) || new Date());
+      return this;
+    };
+
+    IntervalPollerJob.prototype.isOverdue = function() {
+      return !this.runner && (moment().isAfter(this.nextRun) || moment().isSame(this.nextRun));
+    };
+
+    IntervalPollerJob.prototype.execute = function() {
+      this._endPreviousRunner();
+      this.runner = new PollerJobRunner(this);
+      this._setToRetryInTimeout();
+      return this.runner.run().then((function(_this) {
+        return function(items) {
+          _this.retries = 0;
+          _this.saveNextIncrementalRun();
+          return items;
+        };
+      })(this))["finally"]((function(_this) {
+        return function() {
+          _this.runner = null;
+        };
+      })(this));
+    };
+
+    return IntervalPollerJob;
+
+  })(PollerJob);
+});
+
+'use strict';
+angular.module('angular-advanced-poller').factory('PollerJob', function(localStorageService) {
+  var PollerJob;
+  return PollerJob = (function() {
+    function PollerJob() {}
+
+    PollerJob.prototype.makeOverdue = function() {
+      this.nextRun = moment();
+      this._saveRuntime();
+      return this;
+    };
+
+    PollerJob.prototype.saveNextIncrementalRun = function() {
       this.nextRun = moment().add(this.getNextInterval());
       this._saveRuntime();
       return this;
+    };
+
+    PollerJob.prototype.cancelNextRun = function() {
+      this.nextRun = void 0;
+      return localStorageService.remove("poller.job.nextRun." + this.name);
     };
 
     PollerJob.prototype._saveRuntime = function() {
@@ -98,11 +215,26 @@ angular.module('angular-advanced-poller').factory('PollerJob', function(localSto
       }
     };
 
-    PollerJob.prototype.execute = function() {
-      this._endPreviousRunner();
-      this.saveNextRun();
-      this.runner = new PollerJobRunner(this);
-      return this.runner.run();
+    PollerJob.prototype.maxRetries = function() {
+      return this.retry || 5;
+    };
+
+    PollerJob.prototype._setToRetryInTimeout = function() {
+      this.retries || (this.retries = 0);
+      this.retries++;
+      if (this.retries < this.maxRetries()) {
+        if (this.retries > 1) {
+          console.debug("Job " + name + " has been retried " + this.retries + " times.");
+        }
+        this.nextRun = moment().add({
+          milliseconds: this.getTimeout().asMilliseconds()
+        });
+        return this._saveRuntime();
+      } else {
+        console.debug("Job " + name + " has been retried more than " + (this.maxRetries()) + " times.");
+        this.saveNextIncrementalRun();
+        return this.retries = 0;
+      }
     };
 
     PollerJob.prototype._endPreviousRunner = function() {
@@ -218,21 +350,24 @@ angular.module('angular-advanced-poller').factory('PollerJobRunner', function($q
  */
 var __slice = [].slice;
 
-angular.module('angular-advanced-poller').service('PollerScheduler', function(PollerJob, $timeout, $rootScope, $q) {
-  var announceJobCompletion, announceJobFailure, announceJobFinished, announceJobStarted, calculateTimeToNextJob, closestJobTime, executeJobs, executeNextJobsOnQueue, executingJobs, executionPromise, findJob, finishJobAndRunNextJobOnQueue, hasJob, jobFromDefinition, jobs, maximumConcurrency, minWaitTime, onJobFailure, onJobFinished, onJobStarted, onJobSuccess, organizeJobs, stopAllJobs;
+angular.module('angular-advanced-poller').service('PollerScheduler', function(IntervalPollerJob, ChainedPollerJob, $timeout, $rootScope, $q) {
+  var addJobFromDefinition, announceJobCompletion, announceJobFailure, announceJobFinished, announceJobStarted, calculateTimeToNextJob, closestJobTime, executeJobs, executeNextJobsOnQueue, executingJobs, executionPromise, findJob, finishJobAndRunNextJobOnQueue, hasJob, jobs, maximumConcurrency, minWaitTime, onJobFailure, onJobFinished, onJobStarted, onJobSuccess, organizeJobs, stopAllJobs;
   jobs = [];
   executingJobs = [];
   executionPromise = null;
   maximumConcurrency = 4;
   minWaitTime = 100;
-  jobFromDefinition = function(definition) {
+  addJobFromDefinition = function(definition, defClass) {
     var job;
-    job = new PollerJob;
     if (hasJob(definition.name)) {
       throw "A job of name " + definition.name + " is already registered";
     }
+    job = new defClass;
     _.defaults(job, definition);
     job.initialize();
+    job.validate();
+    jobs.push(job);
+    organizeJobs();
     return job;
   };
   finishJobAndRunNextJobOnQueue = function(job) {
@@ -355,13 +490,33 @@ angular.module('angular-advanced-poller').service('PollerScheduler', function(Po
       })
    */
   this.addJob = function(jobDefinition) {
+    addJobFromDefinition(jobDefinition, IntervalPollerJob);
+  };
+
+  /*
+    @ngdoc method
+    @name PollerScheduler.chainJob
+    @function
+  
+    @description Add a new job to the scheduler, chained to the success of another job.
+                 This job will execute when the other job completes successfully.
+    @example
+      PollerScheduler.chainJob({
+        name: "Job2",
+        priority: 2,
+        run: ( -> true),
+        timeout: moment.duration(seconds: 20)
+        chainTo: 'Job1'
+      })
+   */
+  this.chainJob = function(jobDefinition) {
     var job;
-    if (executionPromise) {
-      throw "The scheduler is running.  Stop it before adding jobs.";
-    }
-    job = jobFromDefinition(jobDefinition);
-    job.validate();
-    jobs.push(job);
+    job = addJobFromDefinition(jobDefinition, ChainedPollerJob);
+    job.scope = $rootScope.$new();
+    return this.whenSucceeded(job.chainTo, job.scope, function() {
+      console.debug("Chained job " + job.name + " will now execute");
+      return job.makeOverdue();
+    });
   };
 
   /*

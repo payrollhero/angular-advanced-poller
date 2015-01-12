@@ -1,7 +1,7 @@
 'use strict'
 
 describe "PollerScheduler", ->
-  dateTime = "2010-01-01 10:00:00"
+  dateTime = "2010-01-01T18:00:00.000Z"
   initializeModule()
   subject = {}
   $rootScope = {}
@@ -15,6 +15,8 @@ describe "PollerScheduler", ->
     run: ( -> true),
     interval: moment.duration(seconds: 30),
     timeout: moment.duration(seconds: 20)
+
+  chainedJob = {}
 
   job2 =
     name: "Job2",
@@ -68,6 +70,9 @@ describe "PollerScheduler", ->
     for jobDefinition in jobs
       subject.addJob(jobDefinition)
 
+  configureChainedJob = ->
+    subject.chainJob(chainedJob)
+
   startJobs = ->
     configure()
     subject.start()
@@ -97,11 +102,12 @@ describe "PollerScheduler", ->
         job1.promise.resolve("Done")
         job2.promise.resolve("Done")
         $rootScope.$digest()
-        sandbox.clock.now = (moment('2010-01-01 10:00:40').unix() * 1000)
+        sandbox.clock.now = (moment('2010-01-01T18:00:40.000Z').unix() * 1000)
         $timeout.flush()
         expect( job1.spy ).toHaveBeenCalledTwice()
         expect( job2.spy ).toHaveBeenCalledTwice()
         $rootScope.$digest()
+        subject.stop()
         $timeout.flush()
 
       it "notifies about start, success, failure, finally", ->
@@ -186,6 +192,41 @@ describe "PollerScheduler", ->
       expect(job3.spy).toHaveBeenCalledOnce()
       subject.stop()
       $timeout.flush()
+
+  describe "chaining jobs", ->
+    before ->
+      chainedJob = {
+        name: "ChainJob"
+        priority: 2
+        timeout: moment.duration(seconds: 25)
+        chainTo: 'Job1'
+      }
+      spyOnJob(chainedJob)
+      spyOnJob(job1)
+      subject.addJob(job1)
+      subject.chainJob(chainedJob)
+      subject.start()
+
+    it "calls the chained job when the first job completes successfully", ->
+      expect(job1.spy).toHaveBeenCalledOnce()
+      expect(chainedJob.spy).not.toHaveBeenCalledOnce()
+      job1.promise.resolve('Done')
+      $rootScope.$digest()
+      expect(chainedJob.spy).toHaveBeenCalledOnce()
+      expect(localStorage.getItem("ls.poller.job.nextRun.ChainJob")).toEqual('2010-01-01T18:00:25.000Z')
+      chainedJob.promise.resolve('Done')
+      $rootScope.$digest()
+      expect(localStorage.getItem("ls.poller.job.nextRun.ChainJob")).toBeNull()
+      subject.stop()
+      $timeout.flush()
+
+    it "does not call the chained job if the first job does not complete successfully", ->
+      job1.promise.reject('not done')
+      $rootScope.$digest()
+      expect(chainedJob.spy).not.toHaveBeenCalledOnce()
+      subject.stop()
+      $timeout.flush()
+
 
   describe '#setConcurrency', ->
     before ->

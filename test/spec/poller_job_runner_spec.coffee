@@ -4,16 +4,16 @@ describe "PollerJobRunner", ->
   dateTime = "2010-01-01 10:00:00"
   initializeModule()
   subject = {}
-  PollerJob = {}
+  IntervalPollerJob = {}
   params = {}
   $q = {}
   $timeout = {}
 
-  before inject (_PollerJob_, PollerJobRunner, _$q_, _$timeout_) ->
+  before inject (_IntervalPollerJob_, PollerJobRunner, _$q_, _$timeout_) ->
     subject = PollerJobRunner
     @sinon = sinon.sandbox.create()
     @sinon.useFakeTimers(moment(dateTime).unix() * 1000)
-    PollerJob = _PollerJob_
+    IntervalPollerJob = _IntervalPollerJob_
     $q = _$q_
     $timeout = _$timeout_
     params =
@@ -28,7 +28,7 @@ describe "PollerJobRunner", ->
     @sinon.restore()
 
   make = ->
-    inst = new PollerJob()
+    inst = new IntervalPollerJob()
     _.defaults(inst, params)
     inst.validate()
     inst.initialize()

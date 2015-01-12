@@ -64,8 +64,37 @@ PollerScheduler.addJob({
   interval: moment.duration(seconds: 30) # Must be a moment duration
   timeout: moment.duration(seconds: 20) # Must be a moment duration
   randomOffset: moment.duration(seconds: 5) # Must be moment duration
+  retry: 5 #Jobs are defaulted to retry 5 times, but you can set it per job
 })
 ```
+
+### Chained Jobs
+Jobs can be chained to each other so that one job executes automatically when another finishes.
+Adding a chained job is similar to a normal job with slightly different parameters
+
+```coffee
+PollerScheduler.chainJob({
+  name: 'chainedJob'
+  priority: 5 # Must be an integer
+  run: $q.defer.promise # Must be a promise
+  chainTo: 'otherJob' # 'name' of the other job
+  timeout: moment.duration(seconds: 20) #Required timeout
+  retry: 5 #Jobs are defaulted to retry 5 times, but you can set it per job
+})
+```
+Chained jobs execute on successful completion of the job they are chained to.  When the chained job
+is activated it is added to the execution list and scheduled in turn with the normal jobs.  When a chain
+job completes successfully it will not be run again until the job it is chained to is run.
+
+### Job timeout, retry, and wait time
+
+The angular advanced poller uses the browser local storage to keep track of when every job should be run,
+including chained jobs.  This makes it safe for app closure/restart/upgrade.
+- a job is 'overdue' when the time in local storage is equal or greater to the current time
+- 'overdue' jobs are scheduled for execution immediately and executed concurrently in priority order
+- when a job is running it will be 'overdue' after the configured timeout (this is stored in local storage)
+- if a job fails it will be retried after the configured 'timeout'
+- once the maximum number of retries of a job are reached, it is scheduled again after the standard interval.
 
 ### Concurrency
 The scheduler has a configurable maximum concurrency.  The default is 4.
